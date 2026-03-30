@@ -113,3 +113,17 @@ src/
 1. Clone the repository:  
 ```bash
 git clone https://github.com/yourusername/taskflow.git
+```
+
+2. Navigate to the project folder:
+```bash
+cd taskflow
+```
+3. Install dependencies:
+```bash
+flutter pub get
+```
+4. Run the app:
+```bash
+flutter run
+```
