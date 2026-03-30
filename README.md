@@ -52,3 +52,44 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 ---
 
 ## 📂 Folder Structure
+```text
+taskflow/
+│
+├── lib/
+│   ├── core/
+│   │   ├── constants/
+│   │   ├── utils/
+│   │   └── services/
+│   ├── features/
+│   │   ├── auth/
+│   │   │   ├── data/
+│   │   │   ├── presentation/
+│   │   │   └── logic/
+│   │   ├── tasks/
+│   │   │   ├── data/
+│   │   │   ├── presentation/
+│   │   │   └── logic/
+│   │   ├── dashboard/
+│   │   │   └── presentation/
+│   │   └── profile/
+│   │   │ └── presentation/
+│   ├   │  notifications/
+│   │   └──  ├── data/
+│   │   │    ├── presentation/
+│   │   │    └── logic/
+│   │   ├── core/
+│   │    └──  theme/
+│   ├── shared/
+│   │   ├── widgets/
+│   │   └── models/
+│   ├── routes/
+│   │   └── app_routes.dart
+│   └── main.dart
+├── assets/
+│   ├── images/
+│   └── icons/
+├── test/
+├── pubspec.yaml
+└── README.md
+```
+
