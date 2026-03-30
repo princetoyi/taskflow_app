@@ -1,6 +1,6 @@
-# 📁 taskflow_app
-Task management app for organising task, tracking progress,  and boosting productivity. Built with flutter and firebase for  efficient workflow management, simple and scalable task management system for teams and individuals
-for real-time data synchronization and Flutter for a responsive, cross-platform experience.
+# 📁 Taskflow app
+Task flow is a management app for organising task, tracking progress,  and boosting productivity. Built with flutter and firebase for  efficient workflow management, simple and scalable task management system for teams and individuals
+
 
 ---
 
