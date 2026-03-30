@@ -30,7 +30,8 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 - **Task Management** – Create, edit, delete, and mark tasks as completed.  
 - **Dashboard** – View tasks sorted by priority, deadline, or completion status.  
 - **Profile Management** – Update user information and preferences.  
-- **Responsive UI** – Works seamlessly on both mobile and tablet devices.  
+- **Responsive UI** – Works seamlessly on both mobile and tablet devices.
+- **Notifications** – Notifies both users when there's updates.
 
 ---
 
@@ -41,6 +42,42 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 | Backend | Firebase Authentication, Cloud Firestore |
 | State Management | Provider / Riverpod (or Bloc) |
 | Version Control | Git & GitHub |
+
+## Tools & Technologies
+
+### Frontend (Flutter)
+- **Flutter SDK** – Build cross-platform mobile, web, and desktop apps
+- **Dart** – Programming language used by Flutter
+- **VS Code / Android Studio** – Code editors with Flutter support
+- **Flutter DevTools** – Debugging and performance profiling
+- **Figma / Adobe XD / Canva** – UI/UX design and prototyping
+- **Packages / Plugins:**
+  - `http` → API calls to Python backend
+  - `firebase_auth` → User authentication
+  - `cloud_firestore` → Database for tasks
+
+### Backend (Python)
+- **Python 3.10+** – Backend programming language
+- **FastAPI** – Web framework for building APIs
+- **SQLite / PostgreSQL** – Backend database 
+
+### Database & Cloud Services (Firebase)
+- **Firebase Authentication** – Login/signup functionality
+- **Cloud Firestore** – Storing tasks, users, and dashboard data
+- **Firebase Storage** – Optional: storing images/icons
+- **Firebase Hosting** – Optional: host web version of TaskFlow
+- **Firebase Console** – Manage backend, users, and database
+
+### Version Control & Collaboration
+- **Git** – Version control
+- **GitHub / GitLab / Bitbucket** – Project repository
+- **VS Code Git Integration** – Commits and branches
+
+### Testing Tools
+- **Flutter Test** – Unit and widget tests
+- **pytest** – Python backend tests
+- **Firebase Emulator Suite** – Simulate auth and Firestore locally
+
 
 
 ---
