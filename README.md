@@ -10,8 +10,7 @@ for real-time data synchronization and Flutter for a responsive, cross-platform 
 3. [Tech Stack](#tech-stack)  
 4. [Folder Structure](#folder-structure)  
 5. [Getting Started](#getting-started)  
-6. [Contributing](#contributing)  
-7. [License](#license)  
+
 
 ---
 
