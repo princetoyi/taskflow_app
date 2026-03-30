@@ -100,3 +100,16 @@ src/
 └── App.dart            # Main app widget and router setup
 ```
 
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Flutter SDK installed  
+- Firebase project setup  
+- Git installed  
+
+### Steps
+1. Clone the repository:  
+```bash
+git clone https://github.com/yourusername/taskflow.git
