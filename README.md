@@ -84,43 +84,19 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 
 ## 📂 Folder Structure
 ```text
-taskflow/
-│
-├── lib/
-│   ├── core/
-│   │   ├── constants/
-│   │   ├── utils/
-│   │   └── services/
-│   ├── features/
-│   │   ├── auth/
-│   │   │   ├── data/
-│   │   │   ├── presentation/
-│   │   │   └── logic/
-│   │   ├── tasks/
-│   │   │   ├── data/
-│   │   │   ├── presentation/
-│   │   │   └── logic/
-│   │   ├── dashboard/
-│   │   │   └── presentation/
-│   │   └── profile/
-│   │   │ └── presentation/
-│   ├   │  notifications/
-│   │   └──  ├── data/
-│   │   │    ├── presentation/
-│   │   │    └── logic/
-│   │   ├── core/
-│   │    └──  theme/
-│   ├── shared/
-│   │   ├── widgets/
-│   │   └── models/
-│   ├── routes/
-│   │   └── app_routes.dart
-│   └── main.dart
-├── assets/
-│   ├── images/
-│   └── icons/
-├── test/
-├── pubspec.yaml
-└── README.md
+src/
+├── components/         # Reusable UI components (TaskCard, Navbar, LoadingIndicator)
+├── hooks/              # Shared logic / helpers (useAuth, useTasks, useConnectivity)
+├── lib/                # Utilities and services (Storage, Formatting, Firebase integration)
+├── pages/              # Main screens / views (Login, Dashboard, Tasks, Profile, Settings)
+├── store/              # State management (Riverpod / Provider, offline cache, sync)
+├── styles/             # Global themes, colors, and animations (theme.dart, globals.dart)
+├── routes/             # App navigation (app_routes.dart)
+├── assets/             # Static files (images, icons)
+├── test/               # Unit and widget tests
+├── pubspec.yaml         # Flutter project config
+├── README.md           # Project documentation
+├── main.dart           # Flutter entry point
+└── App.dart            # Main app widget and router setup
 ```
 
