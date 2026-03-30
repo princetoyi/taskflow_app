@@ -112,12 +112,12 @@ src/
 ### Steps
 1. Clone the repository:  
 ```bash
-git clone https://github.com/yourusername/taskflow.git
+git clone https://github.com/princetoyi/taskflow_app.git
 ```
 
 2. Navigate to the project folder:
 ```bash
-cd taskflow
+cd taskflow_app
 ```
 3. Install dependencies:
 ```bash
