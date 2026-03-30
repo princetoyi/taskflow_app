@@ -41,7 +41,7 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 | Backend | Firebase Authentication, Cloud Firestore |
 | State Management | Provider / Riverpod (or Bloc) |
 | Version Control | Git & GitHub |
-| Design | Figma / Adobe XD (Prototype) |
+
 
 ---
 
