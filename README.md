@@ -3,17 +3,6 @@ Task flow is a management app for organising task, tracking progress,  and boost
 
 
 ---
-
-## 🔹 Table of Contents
-1. [About](#about)  
-2. [Features](#features)  
-3. [Tech Stack](#tech-stack)  
-4. [Folder Structure](#folder-structure)  
-5. [Getting Started](#getting-started)  
-
-
----
-
 ## 📌 About
 TaskFlow is designed for individuals and teams who want to manage their tasks and projects effectively. Users can:  
 - Add, edit, and delete tasks  
