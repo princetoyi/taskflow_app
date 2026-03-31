@@ -29,8 +29,8 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 |-------|------------|
 | Frontend | Flutter |
 | Backend | Firebase Authentication, Cloud Firestore |
-| State Management | Provider / Riverpod (or Bloc) |
 | Version Control | Git & GitHub |
+| Backend Lang | Python  |
 
 ## Tools & Technologies
 
@@ -47,7 +47,6 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 
 ### Backend (Python)
 - **Python 3.10+** – Backend programming language
-- **FastAPI** – Web framework for building APIs
 - **SQLite / PostgreSQL** – Backend database 
 
 ### Database & Cloud Services (Firebase)
@@ -73,20 +72,32 @@ The app leverages **Firebase** for real-time data synchronization and **Flutter*
 
 ## 📂 Folder Structure
 ```text
-src/
-├── components/         # Reusable UI components (TaskCard, Navbar, LoadingIndicator)
-├── hooks/              # Shared logic / helpers (useAuth, useTasks, useConnectivity)
-├── lib/                # Utilities and services (Storage, Formatting, Firebase integration)
-├── pages/              # Main screens / views (Login, Dashboard, Tasks, Profile, Settings)
-├── store/              # State management (Riverpod / Provider, offline cache, sync)
-├── styles/             # Global themes, colors, and animations (theme.dart, globals.dart)
-├── routes/             # App navigation (app_routes.dart)
-├── assets/             # Static files (images, icons)
-├── test/               # Unit and widget tests
-├── pubspec.yaml         # Flutter project config
-├── README.md           # Project documentation
-├── main.dart           # Flutter entry point
-└── App.dart            # Main app widget and router setup
+lib/
+├── core/                  # Shared/global things
+│   ├── theme/             # App theme, colors
+│   ├── utils/             # Helpers, formatters
+│   ├── services/          # Firebase, storage, API logic
+│
+├── features/              # Feature-based structure (BEST PRACTICE)
+│   ├── auth/
+│   │   ├── data/
+│   │   ├── presentation/
+│   │   └── logic/
+│   │
+│   ├── tasks/
+│   │   ├── data/
+│   │   ├── presentation/
+│   │   └── logic/
+│
+├── shared/                # Reusable widgets (your “components”)
+│   ├── widgets/
+│   │   ├── task_card.dart
+│   │   ├── loading_indicator.dart
+│
+├── routes/                # Navigation
+│   └── app_routes.dart
+│
+├── main.dart              # Entry point
 ```
 
 ---
