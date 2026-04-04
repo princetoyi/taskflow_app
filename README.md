@@ -102,6 +102,10 @@ lib/
 
 ---
 
+🧩Architecture Diagram
+
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites
