@@ -78,7 +78,7 @@ lib/
 │   ├── utils/             # Helpers, formatters
 │   ├── services/          # Firebase, storage, API logic
 │
-├── features/              # Feature-based structure (BEST PRACTICE)
+├── features/              # Feature-based structure 
 │   ├── auth/
 │   │   ├── data/
 │   │   ├── presentation/
