@@ -1,0 +1,129 @@
+# ═══════════════════════════════════════════════════════
+#  TaskFlow App — .gitignore
+#  Flutter (Dart) + FastAPI (Python) + Firebase monorepo
+# ═══════════════════════════════════════════════════════
+
+# ── Firebase credentials (NEVER commit these) ──────────
+**/serviceAccountKey.json
+**/firebase_options.dart
+**/*.pem
+**/*.key
+google-services.json
+GoogleService-Info.plist
+
+# ── Environment files ──────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ═══════════════════════════════════════════════════════
+#  Python / FastAPI Backend
+# ═══════════════════════════════════════════════════════
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Byte-compiled / optimised / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+
+# Mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ═══════════════════════════════════════════════════════
+#  Flutter / Dart
+# ═══════════════════════════════════════════════════════
+
+# Build outputs
+**/build/
+
+# Dart tool cache
+**/.dart_tool/
+**/.packages
+
+# Flutter generated files
+**/pubspec.lock
+**/*.g.dart
+**/*.freezed.dart
+
+# Flutter web
+**/web/
+
+# Flutter iOS / macOS generated
+**/ios/Pods/
+**/ios/.symlinks/
+**/macos/Pods/
+**/macos/.symlinks/
+**/*.xcworkspace/
+
+# Flutter Android generated
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/*.keystore
+**/*.jks
+
+# Flutter Desktop
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Dart analysis
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# ═══════════════════════════════════════════════════════
+#  IDEs & Editors
+# ═══════════════════════════════════════════════════════
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ═══════════════════════════════════════════════════════
+#  OS-generated files
+# ═══════════════════════════════════════════════════════
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
