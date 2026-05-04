@@ -1,0 +1,170 @@
+{
+  "info": {
+    "name": "TaskFlow API",
+    "description": "Postman collection covering all planned TaskFlow backend endpoints.\nBase URL: http://localhost:8000\n\nAll protected endpoints require an Authorization header:\n  Authorization: Bearer <firebase-id-token>\n\nGenerate a token by signing in via the Firebase Auth SDK on the client,\nthen calling user.getIdToken() and copying the result here.",
+    "_postman_id": "taskflow-api-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "<paste-firebase-id-token-here>",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Root Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/",
+            "description": "Returns API status and version. No auth required."
+          }
+        },
+        {
+          "name": "Health Ping",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "description": "Lightweight liveness probe."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (stub)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "description": "STUB. In production, login is done client-side via Firebase Auth SDK. This endpoint exists for backend-originated flows.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register (stub)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "description": "STUB. Registration is handled client-side via Firebase Auth SDK.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User (stub)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/me",
+            "description": "Returns the profile of the authenticated user. Requires Bearer token.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ]
+          }
+        },
+        {
+          "name": "Logout (stub)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout",
+            "description": "STUB. Logout is handled client-side by the Firebase Auth SDK.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/tasks/",
+            "description": "Returns all tasks belonging to the authenticated user.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ]
+          }
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/tasks/",
+            "description": "Creates a new task for the authenticated user.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design login screen\",\n  \"description\": \"Create Figma mockup for the login flow.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/tasks/task-001",
+            "description": "Returns a single task by its Firestore document ID.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ]
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/tasks/task-001",
+            "description": "Partially updates a task. Send only the fields you want to change.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_completed\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/tasks/task-001",
+            "description": "Permanently deletes a task. Returns 204 No Content on success.",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

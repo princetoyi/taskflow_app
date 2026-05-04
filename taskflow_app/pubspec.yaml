@@ -19,6 +19,12 @@ dependencies:
   # State Management
   provider: ^6.1.1
   
+  # HTTP Client
+  dio: ^5.4.3+1
+
+  # Secure Token Storage
+  flutter_secure_storage: ^9.0.0
+
   # UI & Utils
   cupertino_icons: ^1.0.2
 
