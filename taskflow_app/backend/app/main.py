@@ -6,7 +6,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from app.routes import auth, tasks, users
+from app.routes import auth, tasks, users, notifications
 from app.firebase_config import initialize_firebase
 import logging
 
@@ -22,8 +22,17 @@ async def lifespan(app: FastAPI):
     # not on every request, to avoid multiple app instances
     initialize_firebase()
     logger.info("Firebase initialised successfully")
+    # Start APScheduler — runs deadline reminder job every hour
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from app.services.notification_service import send_deadline_reminders
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(send_deadline_reminders, "interval", hours=1)
+    scheduler.start()
+    logger.info("Scheduler started — deadline reminders active")
     yield
     # Shutdown — nothing to clean up for Firebase Admin SDK
+    scheduler.shutdown()
     logger.info("TaskFlow API shutting down")
 
 
@@ -38,6 +47,7 @@ app = FastAPI(
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 
 @app.get("/")
 async def root() -> dict[str, str]:
