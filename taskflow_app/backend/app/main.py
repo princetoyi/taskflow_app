@@ -6,7 +6,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from app.routes import auth, tasks
+from app.routes import auth, tasks, users
 from app.firebase_config import initialize_firebase
 import logging
 
@@ -37,7 +37,7 @@ app = FastAPI(
 # Register route layers — thin routers that delegate to services
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
-
+app.include_router(users.router, prefix="/users", tags=["Users"])
 
 @app.get("/")
 async def root() -> dict[str, str]:
