@@ -44,35 +44,20 @@ The app leverages **Firebase** for real-time data synchronisation, **Flutter** f
 ## 📂 Project Structure
 
 ```
-taskflow_app/               ← Repo root
-├── backend/                ← FastAPI Python backend
+taskflow_app/               ← Repo root (Flutter Application)
+├── lib/                    ← Flutter dart source code
 │   ├── core/
-│   │   └── firebase.py     ← Firebase Admin SDK init
-│   ├── routers/
-│   │   ├── auth.py         ← /auth endpoints
-│   │   └── tasks.py        ← /tasks endpoints
+│   ├── features/
+│   ├── routes/
+│   └── services/
+├── backend/                ← FastAPI Python backend
+│   ├── app/                ← Legacy backend implementation
+│   ├── core/               ← Core configuration & Firebase Admin init
+│   ├── routers/            ← API Route handlers (/auth, /tasks)
 │   ├── main.py             ← FastAPI app + CORS middleware
-│   ├── requirements.txt
-│   └── .env                ← Firebase credentials (not committed)
-│
-├── taskflow_app/           ← Flutter application
-│   └── lib/
-│       ├── core/
-│       │   ├── constants/  ← App-wide constants & colours
-│       │   ├── theme/      ← AppTheme
-│       │   └── utils/      ← Helpers & formatters
-│       ├── features/
-│       │   ├── auth/       ← Login, Register screens + AuthProvider
-│       │   ├── tasks/      ← Task screens, TaskProvider, TaskRepository
-│       │   └── dashboard/  ← DashboardScreen
-│       ├── services/
-│       │   ├── firebase_service.dart  ← Firebase init wrapper
-│       │   ├── api_client.dart        ← Dio HTTP client + AuthInterceptor
-│       │   └── token_service.dart     ← flutter_secure_storage wrapper
-│       └── main.dart
-│
-└── docs/
-    └── taskflow_api.postman_collection.json  ← Postman collection
+│   └── requirements.txt
+├── .env                    ← Environment Variables (Firebase Config)
+└── pubspec.yaml            ← Flutter dependencies
 ```
 
 ---
@@ -154,9 +139,9 @@ The API will be available at:
 ### 4. Flutter App Setup
 
 ```bash
-cd taskflow_app
+# From the repository root
 
-# Install all Flutter dependencies (includes Dio, flutter_secure_storage, Firebase packages)
+# Install all Flutter dependencies
 flutter pub get
 ```
 
@@ -172,7 +157,7 @@ dart pub global activate flutterfire_cli
 flutterfire configure
 ```
 
-This generates `lib/firebase_options.dart`. Then update `lib/services/firebase_service.dart` to use it:
+This generates `lib/firebase_options.dart`. Alternatively, you can use the environment variables in your `.env` file for web.
 
 ```dart
 import '../firebase_options.dart';
@@ -218,7 +203,6 @@ flutter run -d chrome
 
 ```bash
 # Flutter unit & widget tests
-cd taskflow_app
 flutter test
 
 # Python backend tests
