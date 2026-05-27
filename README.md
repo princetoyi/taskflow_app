@@ -107,13 +107,17 @@ cd taskflow_app
 2. Enable **Email/Password** under Authentication → Sign-in methods.
 3. Create a **Cloud Firestore** database (start in test mode for development).
 4. Go to Project Settings → Service Accounts → **Generate new private key**.
-5. Save the downloaded JSON as `backend/serviceAccountKey.json` (this file is gitignored).
-6. Update `backend/.env`:
+5. Save the downloaded JSON as `taskflow_serviceAccountkey.json` in the root directory (this file is gitignored).
+6. Create an `.env` file in the root directory (you can copy `.env.example` as a starting point) and update the values:
 
 ```env
-FIREBASE_SERVICE_ACCOUNT=serviceAccountKey.json
+FIREBASE_SERVICE_ACCOUNT=taskflow_serviceAccountkey.json
 DATABASE_URL=https://taskflow-app-default-rtdb.firebaseio.com
+FIREBASE_API_KEY="your-api-key"
+...
 ```
+
+> **Note:** The backend automatically resolves relative service account paths relative to the project root directory, even if you start the server from inside the `backend` folder.
 
 ---
 
@@ -203,8 +207,10 @@ flutter run -d chrome
 
 | Variable | Description | Example |
 |---|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | Path to service account JSON | `serviceAccountKey.json` |
+| `FIREBASE_SERVICE_ACCOUNT` | Path to service account JSON (absolute or relative to root) | `taskflow_serviceAccountkey.json` |
 | `DATABASE_URL` | Firebase RTDB URL (optional) | `https://app-default-rtdb.firebaseio.com` |
+| `FIREBASE_API_KEY` | Firebase API Key (for testing Auth / Login REST API) | `AIzaSy...` |
+| `FIREBASE_PROJECT_ID` | Firebase Project ID | `taskflow-33cf5` |
 
 ---
 

@@ -32,11 +32,18 @@ def _init_firebase():
     if not service_account_path or service_account_path.startswith("path/to"):
         warnings.warn(
             "\n[Firebase] FIREBASE_SERVICE_ACCOUNT is not configured in .env.\n"
-            "  → The server will start, but Firestore calls will not work.\n"
-            "  → Set the path to your serviceAccountKey.json to enable Firebase.",
+            "  -> The server will start, but Firestore calls will not work.\n"
+            "  -> Set the path to your serviceAccountKey.json to enable Firebase.",
             stacklevel=2,
         )
         return None
+
+    # If relative path and not found in CWD, look in the project root (one level above backend/)
+    if not os.path.isabs(service_account_path) and not os.path.exists(service_account_path):
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        root_path = os.path.join(project_root, service_account_path)
+        if os.path.exists(root_path):
+            service_account_path = root_path
 
     try:
         cred = credentials.Certificate(service_account_path)
