@@ -5,8 +5,12 @@ Stub router for /auth endpoints.
 Real implementation will verify Firebase ID tokens using firebase-admin.
 """
 
-from fastapi import APIRouter, HTTPException, Header
+import os
+import requests
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from firebase_admin import auth as firebase_auth
+from core.security import verify_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,43 +39,60 @@ class UserProfileResponse(BaseModel):
 @router.post("/login", response_model=TokenResponse, summary="Log in with email & password")
 async def login(body: LoginRequest):
     """
-    STUB — Returns a placeholder token response.
-
-    Real implementation:
-        1. Client signs in via Firebase Auth SDK and receives an ID token.
-        2. Client sends the ID token as a Bearer header to protected endpoints.
-        3. Backend verifies the token with firebase_admin.auth.verify_id_token().
+    Authenticates via Firebase Identity Toolkit (REST API).
+    Requires FIREBASE_WEB_API_KEY in .env.
     """
+    api_key = os.getenv("FIREBASE_API_KEY") or os.getenv("FIREBASE_WEB_API_KEY")
+    if not api_key:
+        # Fallback to stub if API key isn't provided
+        return TokenResponse(
+            uid="stub-uid-001",
+            email=body.email,
+            token="stub-firebase-id-token",
+        )
+    
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+    resp = requests.post(url, json={
+        "email": body.email,
+        "password": body.password,
+        "returnSecureToken": True
+    })
+    
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+    data = resp.json()
     return TokenResponse(
-        uid="stub-uid-001",
-        email=body.email,
-        token="stub-firebase-id-token",
+        uid=data["localId"],
+        email=data["email"],
+        token=data["idToken"],
     )
 
 
-@router.post("/register", status_code=201, summary="Register a new user")
-async def register(body: LoginRequest):
+@router.post("/signup", status_code=201, summary="Register a new user")
+async def signup(body: LoginRequest):
     """
-    STUB — Registration is handled client-side via Firebase Auth SDK.
-    This endpoint exists as a placeholder for any server-side post-registration
-    logic (e.g., creating a Firestore user profile document).
+    Creates a new user in Firebase Auth.
     """
-    return {"message": "User registration stub — handled by Firebase Auth on client."}
+    try:
+        user = firebase_auth.create_user(
+            email=body.email,
+            password=body.password
+        )
+        return {"uid": user.uid, "email": user.email, "message": "User registered successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/me", response_model=UserProfileResponse, summary="Get current user profile")
-async def get_me(authorization: str = Header(...)):
+async def get_me(decoded_token: dict = Depends(verify_token)):
     """
-    STUB — Returns a placeholder user profile.
-
-    Real implementation:
-        decoded = firebase_admin.auth.verify_id_token(token)
-        uid = decoded["uid"]
-        # fetch from Firestore users/{uid}
+    Returns the current user profile based on the verified token.
     """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header format.")
-    return UserProfileResponse(uid="stub-uid-001", email="user@example.com")
+    return UserProfileResponse(
+        uid=decoded_token.get("uid"),
+        email=decoded_token.get("email", "")
+    )
 
 
 @router.post("/logout", summary="Log out current user")

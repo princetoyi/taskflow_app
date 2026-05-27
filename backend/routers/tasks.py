@@ -5,9 +5,10 @@ Stub router for /tasks endpoints.
 Real implementation will read/write to Cloud Firestore via firebase-admin.
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
+from core.security import verify_token
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -59,45 +60,34 @@ STUB_TASKS = [
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[TaskResponse], summary="Get all tasks for authenticated user")
-async def get_tasks(authorization: str = Header(...)):
+async def get_tasks(decoded_token: dict = Depends(verify_token)):
     """
     STUB — Returns hardcoded task list.
-
-    Real implementation:
-        uid = verify_token(authorization)
-        tasks = db.collection("tasks").where("userId", "==", uid).stream()
     """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
+    uid = decoded_token.get("uid")
+    # In a real implementation: filter by user_id
     return STUB_TASKS
 
 
 @router.post("/", response_model=TaskResponse, status_code=201, summary="Create a new task")
-async def create_task(body: TaskCreateRequest, authorization: str = Header(...)):
+async def create_task(body: TaskCreateRequest, decoded_token: dict = Depends(verify_token)):
     """
     STUB — Returns a fake created task.
-
-    Real implementation:
-        uid = verify_token(authorization)
-        ref = db.collection("tasks").add({...})
     """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
+    uid = decoded_token.get("uid")
     return TaskResponse(
         id="task-new-stub",
         title=body.title,
         description=body.description,
         is_completed=False,
         created_at=datetime.utcnow().isoformat() + "Z",
-        user_id="stub-uid-001",
+        user_id=uid or "stub-uid-001",
     )
 
 
 @router.get("/{task_id}", response_model=TaskResponse, summary="Get a single task by ID")
-async def get_task(task_id: str, authorization: str = Header(...)):
+async def get_task(task_id: str, decoded_token: dict = Depends(verify_token)):
     """STUB — Returns the first stub task regardless of ID."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
     task = next((t for t in STUB_TASKS if t.id == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
@@ -105,10 +95,8 @@ async def get_task(task_id: str, authorization: str = Header(...)):
 
 
 @router.patch("/{task_id}", response_model=TaskResponse, summary="Update a task")
-async def update_task(task_id: str, body: TaskUpdateRequest, authorization: str = Header(...)):
+async def update_task(task_id: str, body: TaskUpdateRequest, decoded_token: dict = Depends(verify_token)):
     """STUB — Returns the first stub task with patched fields applied."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
     task = next((t for t in STUB_TASKS if t.id == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
@@ -117,8 +105,6 @@ async def update_task(task_id: str, body: TaskUpdateRequest, authorization: str 
 
 
 @router.delete("/{task_id}", status_code=204, summary="Delete a task")
-async def delete_task(task_id: str, authorization: str = Header(...)):
+async def delete_task(task_id: str, decoded_token: dict = Depends(verify_token)):
     """STUB — No-op delete."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
     return None

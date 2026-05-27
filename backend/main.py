@@ -14,6 +14,7 @@ API docs (auto-generated):
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from core import firebase
 from routers import auth, tasks
 
 # ── App instance ──────────────────────────────────────────────────────────────
