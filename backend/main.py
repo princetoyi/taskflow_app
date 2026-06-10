@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core import firebase
-from routers import auth, tasks
+from routers import auth, tasks, users, notifications
 
 # ── App instance ──────────────────────────────────────────────────────────────
 
@@ -54,6 +54,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(tasks.router)
+app.include_router(users.router)
+app.include_router(notifications.router)
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
