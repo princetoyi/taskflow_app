@@ -33,9 +33,9 @@ async def signup(request: SignupRequest) -> AuthResponse:
             display_name=user.display_name,
             token=token,
         )
-    except auth.EmailAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Email already registered")
     except Exception as e:
+        if "EMAIL_EXISTS" in str(e) or "already exists" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Email already registered")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -66,3 +66,4 @@ async def login(request: LoginRequest) -> AuthResponse:
         display_name=data.get("displayName"),
         token=data["idToken"],
     )
+    
