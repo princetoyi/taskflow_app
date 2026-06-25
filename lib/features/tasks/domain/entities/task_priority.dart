@@ -1,4 +1,12 @@
-enum TaskPriority { low, medium, high }
+enum TaskPriority { low, medium, high;
+
+  static TaskPriority fromValue(String value) {
+    return TaskPriority.values.firstWhere(
+      (priority) => priority.value == value,
+      orElse: () => TaskPriority.medium,
+    );
+  }
+}
 
 extension TaskPriorityX on TaskPriority {
   String get value => toString().split('.').last;
@@ -12,12 +20,5 @@ extension TaskPriorityX on TaskPriority {
       case TaskPriority.high:
         return 'High';
     }
-  }
-
-  static TaskPriority fromValue(String value) {
-    return TaskPriority.values.firstWhere(
-      (priority) => priority.value == value,
-      orElse: () => TaskPriority.medium,
-    );
   }
 }

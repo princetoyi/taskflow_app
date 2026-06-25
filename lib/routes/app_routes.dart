@@ -7,4 +7,8 @@ class AppRoutes {
   static const String tasks = '/tasks';
   static const String taskCreate = '/tasks/create';
   static const String taskDetail = '/tasks/:id';
+  static const String settings = '/settings';
+  static const String atRiskTasks = '/at-risk-tasks';
+  static const String alerts = '/alerts';
+  static const String notifications = '/notifications';
 }

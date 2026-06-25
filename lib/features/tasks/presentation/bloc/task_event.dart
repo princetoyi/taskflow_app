@@ -9,7 +9,24 @@ abstract class TaskEvent extends Equatable {
 }
 
 class LoadTasks extends TaskEvent {
-  const LoadTasks();
+  final String? status;
+  final String? priority;
+  final String? sortBy;
+  final String? order;
+  final int page;
+  final int pageSize;
+
+  const LoadTasks({
+    this.status,
+    this.priority,
+    this.sortBy,
+    this.order,
+    this.page = 1,
+    this.pageSize = 20,
+  });
+
+  @override
+  List<Object?> get props => [status, priority, sortBy, order, page, pageSize];
 }
 
 class CreateTask extends TaskEvent {
@@ -37,13 +54,4 @@ class DeleteTask extends TaskEvent {
 
   @override
   List<Object?> get props => [taskId];
-}
-
-class ToggleTaskStatus extends TaskEvent {
-  final Task task;
-
-  const ToggleTaskStatus(this.task);
-
-  @override
-  List<Object?> get props => [task];
 }

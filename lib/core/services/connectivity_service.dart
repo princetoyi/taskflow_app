@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ConnectivityService {
@@ -9,4 +10,8 @@ class ConnectivityService {
     final status = await _connectivity.checkConnectivity();
     return status != ConnectivityResult.none;
   }
+
+  Stream<bool> get isConnected => _connectivity.onConnectivityChanged.map(
+        (status) => status != ConnectivityResult.none,
+      );
 }

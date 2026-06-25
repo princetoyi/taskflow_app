@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_colors.dart';
-import '../domain/entities/task.dart';
-import '../domain/entities/task_priority.dart';
-import '../domain/entities/task_status.dart';
-import '../presentation/bloc/task_bloc.dart';
-import '../presentation/bloc/task_event.dart';
-import '../presentation/bloc/task_state.dart';
-import '../presentation/widgets/task_form_fields.dart';
+import 'package:taskflow_app/core/constants/app_colors.dart';
+import 'package:taskflow_app/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:taskflow_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task_priority.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task_status.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_bloc.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_event.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_state.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/task_form_fields.dart';
 
-class CreateTaskScreen extends StatefulWidget {
+class TaskFormScreen extends StatefulWidget {
   final Task? initialTask;
 
-  const CreateTaskScreen({Key? key, this.initialTask}) : super(key: key);
+  const TaskFormScreen({Key? key, this.initialTask}) : super(key: key);
 
   @override
-  State<CreateTaskScreen> createState() => _CreateTaskScreenState();
+  State<TaskFormScreen> createState() => _TaskFormScreenState();
 }
 
-class _CreateTaskScreenState extends State<CreateTaskScreen> {
+class _TaskFormScreenState extends State<TaskFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
@@ -47,10 +49,22 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       return;
     }
 
+    final authState = context.read<AuthBloc>().state;
+    final userId = widget.initialTask?.userId ??
+        ((authState is Authenticated) ? authState.user.uid : '');
+    if (userId.isEmpty) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be signed in to save tasks.')),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     final task = Task(
       id: widget.initialTask?.id ??
           'task-${DateTime.now().millisecondsSinceEpoch}',
+      userId: userId,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       status: widget.initialTask?.status ?? TaskStatus.pending,
