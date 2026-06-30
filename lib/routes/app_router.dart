@@ -5,10 +5,13 @@ import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/signup_screen.dart';
-import '../features/auth/presentation/screens/dashboard_screen.dart';
-import '../features/tasks/screens/task_list_screen.dart';
-import '../features/tasks/screens/create_task_screen.dart';
-import '../features/tasks/screens/task_detail_screen.dart';
+import '../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../features/notifications/presentation/screens/notifications_screen.dart';
+import '../features/tasks/presentation/screens/alerts_screen.dart';
+import '../features/tasks/presentation/screens/task_list_screen.dart';
+import '../features/tasks/presentation/screens/task_form_screen.dart';
+import '../features/tasks/presentation/screens/task_detail_screen.dart';
+import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/tasks/domain/entities/task.dart';
 import 'app_routes.dart';
 
@@ -65,10 +68,18 @@ class AppRouter {
         builder: (context, state) => const TaskListScreen(),
       ),
       GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.alerts,
+        builder: (context, state) => const AlertsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.taskCreate,
         builder: (context, state) {
           final task = state.extra as Task?;
-          return CreateTaskScreen(initialTask: task);
+          return TaskFormScreen(initialTask: task);
         },
       ),
       GoRoute(
@@ -78,6 +89,10 @@ class AppRouter {
           final task = state.extra as Task?;
           return TaskDetailScreen(taskId: taskId, initialTask: task);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

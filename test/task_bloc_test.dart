@@ -66,6 +66,7 @@ void main() {
     test('LoadTasks emits loading then loaded with tasks', () async {
       final task = Task(
         id: 'task-1',
+        userId: 'user-1',
         title: 'Test Task',
         description: 'Test description',
         status: TaskStatus.pending,
@@ -89,6 +90,7 @@ void main() {
     test('CreateTask emits loading then loaded with created task', () async {
       final task = Task(
         id: 'task-2',
+        userId: 'user-1',
         title: 'New Task',
         description: 'Create test',
         status: TaskStatus.pending,
@@ -110,6 +112,7 @@ void main() {
     test('ToggleTaskStatus applies optimistic update and then saves', () async {
       final task = Task(
         id: 'task-3',
+        userId: 'user-1',
         title: 'Toggle Task',
         description: 'Toggle status test',
         status: TaskStatus.pending,
@@ -120,6 +123,17 @@ void main() {
       repository = FakeTaskRepository([task]);
       bloc = TaskBloc(repository);
 
+      final updatedTask = Task(
+        id: task.id,
+        userId: task.userId,
+        title: task.title,
+        description: task.description,
+        status: TaskStatus.completed,
+        priority: task.priority,
+        deadline: task.deadline,
+        createdAt: task.createdAt,
+      );
+
       final future = expectLater(
         bloc.stream,
         emitsThrough(isA<TaskLoaded>().having((s) => s.tasks.first.status, 'final status', TaskStatus.completed)),
@@ -127,7 +141,7 @@ void main() {
 
       bloc.add(const LoadTasks());
       await bloc.stream.firstWhere((state) => state is TaskLoaded);
-      bloc.add(ToggleTaskStatus(task));
+      bloc.add(UpdateTask(updatedTask));
       await future;
     });
   });

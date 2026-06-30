@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../../../core/services/notification_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -41,6 +42,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       emit(Authenticated(user));
+      // Register FCM token for this device with backend
+      NotificationService().registerToken();
     } catch (error) {
       final message = _mapExceptionToMessage(error);
       emit(AuthError(message));
@@ -60,6 +63,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       emit(Authenticated(user));
+      // Register FCM token after successful signup
+      NotificationService().registerToken();
     } catch (error) {
       final message = _mapExceptionToMessage(error);
       emit(AuthError(message));

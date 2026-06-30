@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../auth/presentation/bloc/auth_bloc.dart';
-import '../../auth/presentation/bloc/auth_state.dart';
-import '../domain/entities/task.dart';
-import '../presentation/bloc/task_bloc.dart';
-import '../presentation/bloc/task_event.dart';
-import '../presentation/bloc/task_state.dart';
-import '../presentation/widgets/empty_state_widget.dart';
-import '../presentation/widgets/loading_skeleton.dart';
-import '../presentation/widgets/task_card.dart';
-import '../../../routes/app_routes.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:taskflow_app/core/constants/app_colors.dart';
+import 'package:taskflow_app/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:taskflow_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task_status.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_bloc.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_event.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_state.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/empty_state_widget.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/loading_skeleton.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/task_card.dart';
+import 'package:taskflow_app/routes/app_routes.dart';
 
 class TaskListScreen extends StatelessWidget {
   const TaskListScreen({Key? key}) : super(key: key);
@@ -65,6 +66,12 @@ class TaskListScreen extends StatelessWidget {
                   'My Work',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
+              ),
+              IconButton(
+                onPressed: () => context.push(AppRoutes.settings),
+                icon: const Icon(Icons.settings_outlined),
+                color: AppColors.accent2,
+                tooltip: 'Settings',
               ),
               Container(
                 width: 36,
@@ -166,11 +173,44 @@ class TaskListScreen extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final task = tasks[index];
-              return TaskCard(
-                task: task,
-                onTap: () => context.go(AppRoutes.taskDetail.replaceFirst(':id', task.id), extra: task),
-                onToggleStatus: () => context.read<TaskBloc>().add(ToggleTaskStatus(task)),
-                onDelete: () => _confirmDelete(context, task.id),
+              return Dismissible(
+                key: ValueKey(task.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(Icons.delete_outline, color: Colors.white),
+                ),
+                confirmDismiss: (_) async {
+                  return await _confirmDelete(context, task.id);
+                },
+                onDismissed: (_) {
+                  context.read<TaskBloc>().add(DeleteTask(task.id));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Task removed')), 
+                  );
+                },
+                child: TaskCard(
+                  task: task,
+                  onTap: () => context.go(AppRoutes.taskDetail.replaceFirst(':id', task.id), extra: task),
+                  onToggleStatus: () => context.read<TaskBloc>().add(UpdateTask(_toggleStatus(task))),
+                  onDelete: () async {
+                    final taskBloc = context.read<TaskBloc>();
+                    final messenger = ScaffoldMessenger.of(context);
+                    final confirmed = await _confirmDelete(context, task.id);
+                    if (confirmed) {
+                      taskBloc.add(DeleteTask(task.id));
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Task removed')),
+                      );
+                    }
+                  },
+                ),
               );
             },
           ),
@@ -199,8 +239,8 @@ class TaskListScreen extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, String taskId) {
-    showDialog<void>(
+  Future<bool> _confirmDelete(BuildContext context, String taskId) async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -208,19 +248,31 @@ class TaskListScreen extends StatelessWidget {
           content: const Text('Are you sure you want to remove this task?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.read<TaskBloc>().add(DeleteTask(taskId));
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Delete'),
             ),
           ],
         );
       },
+    );
+    return result == true;
+  }
+
+  Task _toggleStatus(Task task) {
+    final status = task.status == TaskStatus.completed ? TaskStatus.pending : TaskStatus.completed;
+    return Task(
+      id: task.id,
+      userId: task.userId,
+      title: task.title,
+      description: task.description,
+      status: status,
+      priority: task.priority,
+      deadline: task.deadline,
+      createdAt: task.createdAt,
     );
   }
 

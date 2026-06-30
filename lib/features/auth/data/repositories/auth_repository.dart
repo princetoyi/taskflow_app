@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/errors/app_exception.dart';
-import '../../../../core/network/api_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../models/auth_user_model.dart';
@@ -9,13 +9,13 @@ import '../services/auth_service.dart';
 
 class AuthRepository {
   final AuthService authService;
-  final ApiService apiService;
+  final ApiClient apiClient;
   final StorageService storageService;
   final ConnectivityService connectivityService;
 
   AuthRepository({
     required this.authService,
-    required this.apiService,
+    required this.apiClient,
     required this.storageService,
     required this.connectivityService,
   });
@@ -33,18 +33,11 @@ class AuthRepository {
         email: email,
         password: password,
       );
+
       final idToken = await authService.getFirebaseIdToken();
-      final response = await apiService.client.post(
-        '/auth/login',
-        data: {'firebase_token': idToken},
-      );
+      await storageService.saveToken(idToken);
 
-      final accessToken = response.data['access_token']?.toString();
-      if (accessToken == null || accessToken.isEmpty) {
-        throw AppException('Authentication token is missing from response.');
-      }
-
-      await storageService.saveToken(accessToken);
+      await apiClient.get('/auth/me');
       return AuthUserModel.fromFirebaseUser(user);
     } on DioException catch (e) {
       final message = _extractDioMessage(e);
@@ -72,22 +65,11 @@ class AuthRepository {
         email: email,
         password: password,
       );
+
       final idToken = await authService.getFirebaseIdToken();
-      final response = await apiService.client.post(
-        '/auth/signup',
-        data: {
-          'firebase_token': idToken,
-          'email': email,
-          'display_name': name,
-        },
-      );
+      await storageService.saveToken(idToken);
 
-      final accessToken = response.data['access_token']?.toString();
-      if (accessToken == null || accessToken.isEmpty) {
-        throw AppException('Authentication token is missing from response.');
-      }
-
-      await storageService.saveToken(accessToken);
+      await apiClient.get('/auth/me');
       return AuthUserModel.fromFirebaseUser(user);
     } on DioException catch (e) {
       final message = _extractDioMessage(e);
@@ -107,7 +89,7 @@ class AuthRepository {
     }
 
     try {
-      await apiService.client.post('/auth/verify-token');
+      await apiClient.get('/auth/me');
       final firebaseUser = authService.getCurrentUser();
       if (firebaseUser == null) {
         await logout();
@@ -128,7 +110,7 @@ class AuthRepository {
     final token = await storageService.getToken();
     try {
       if (token != null && token.isNotEmpty) {
-        await apiService.client.post('/auth/logout');
+        await apiClient.post('/auth/logout');
       }
     } catch (_) {
       // ignore backend logout errors and continue clearing local state

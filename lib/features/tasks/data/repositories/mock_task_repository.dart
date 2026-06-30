@@ -10,6 +10,7 @@ class MockTaskRepository implements TaskRepository {
   final List<TaskModel> _tasks = [
     TaskModel(
       id: 'task-1',
+      userId: 'user-1',
       title: 'Design Phase 3 UX',
       description: 'Finalize forms, task cards, and detail navigation.',
       status: TaskStatus.pending,
@@ -19,6 +20,7 @@ class MockTaskRepository implements TaskRepository {
     ),
     TaskModel(
       id: 'task-2',
+      userId: 'user-1',
       title: 'Sync backend contract',
       description: 'Confirm API schema with FastAPI team and update models.',
       status: TaskStatus.pending,
@@ -28,6 +30,7 @@ class MockTaskRepository implements TaskRepository {
     ),
     TaskModel(
       id: 'task-3',
+      userId: 'user-1',
       title: 'Prepare release notes',
       description: 'Draft release summary for stakeholder review.',
       status: TaskStatus.completed,
@@ -37,6 +40,7 @@ class MockTaskRepository implements TaskRepository {
     ),
     TaskModel(
       id: 'task-4',
+      userId: 'user-1',
       title: 'Review task metrics',
       description: 'Analyze completion velocity and overdue tasks.',
       status: TaskStatus.pending,
@@ -46,6 +50,7 @@ class MockTaskRepository implements TaskRepository {
     ),
     TaskModel(
       id: 'task-5',
+      userId: 'user-1',
       title: 'Launch mobile smoke tests',
       description: 'Validate routing, error handling, and authentication.',
       status: TaskStatus.completed,
