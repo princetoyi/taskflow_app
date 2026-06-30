@@ -1,8 +1,8 @@
 """
 routers/auth.py
 ---------------
-Stub router for /auth endpoints.
-Real implementation will verify Firebase ID tokens using firebase-admin.
+Router for /auth endpoints.
+Verifies Firebase ID tokens, manages user profiles in Firestore.
 """
 
 import os
@@ -11,15 +11,23 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import auth as firebase_auth
 from core.security import verify_token
+from core.firebase import db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ── Request / Response schemas ────────────────────────────────────────────────
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    display_name: str | None = None
+    role: str = "worker"  # "manager" or "worker"
 
 
 class TokenResponse(BaseModel):
@@ -27,73 +35,74 @@ class TokenResponse(BaseModel):
     email: str
     token: str
     display_name: str | None = None
+    role: str = "worker"
 
 
 class UserProfileResponse(BaseModel):
     uid: str
     email: str
     display_name: str | None = None
+    role: str = "worker"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/login", response_model=TokenResponse, summary="Log in with email & password")
 async def login(body: LoginRequest):
-    """
-    Authenticates via Firebase Identity Toolkit (REST API).
-    Requires FIREBASE_WEB_API_KEY in .env.
-    """
     api_key = os.getenv("FIREBASE_API_KEY") or os.getenv("FIREBASE_WEB_API_KEY")
     if not api_key:
-        # Fallback to stub if API key isn't provided
-        return TokenResponse(
-            uid="stub-uid-001",
-            email=body.email,
-            token="stub-firebase-id-token",
-            display_name=None
-        )
-    
+        raise HTTPException(status_code=500, detail="Firebase API key not configured.")
+
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
     resp = requests.post(url, json={
         "email": body.email,
         "password": body.password,
         "returnSecureToken": True
     })
-    
+
     if resp.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-        
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
     data = resp.json()
+    uid = data["localId"]
+
+    # Fetch role from Firestore
+    role = "worker"
+    if db is not None:
+        doc = db.collection("users").document(uid).get()
+        if doc.exists:
+            role = doc.to_dict().get("role", "worker")
+
     return TokenResponse(
-        uid=data["localId"],
+        uid=uid,
         email=data["email"],
         token=data["idToken"],
-        display_name=data.get("displayName")
+        display_name=data.get("displayName"),
+        role=role,
     )
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=201, summary="Register a new user")
-async def signup(body: LoginRequest):
-    """
-    Creates a new user in Firebase Auth and returns their credentials token.
-    """
+async def signup(body: SignupRequest):
     try:
-        user = firebase_auth.create_user(
-            email=body.email,
-            password=body.password
-        )
+        create_kwargs = {"email": body.email, "password": body.password}
+        if body.display_name:
+            create_kwargs["display_name"] = body.display_name
+
+        user = firebase_auth.create_user(**create_kwargs)
     except Exception as e:
-        # Fallback for stub/local environment where Firebase isn't initialized or credentials are missing
-        if "app" in str(e).lower() or "credentials" in str(e).lower() or "initialize" in str(e).lower():
-            return TokenResponse(
-                uid="stub-uid-001",
-                email=body.email,
-                token="stub-firebase-id-token",
-                display_name=None
-            )
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Try logging in to get the ID token
+    # Save role and display_name to Firestore
+    if db is not None:
+        db.collection("users").document(user.uid).set({
+            "email": body.email,
+            "display_name": body.display_name,
+            "role": body.role,
+            "theme": "light",
+        })
+
+    # Get ID token via REST API
     token = None
     api_key = os.getenv("FIREBASE_API_KEY") or os.getenv("FIREBASE_WEB_API_KEY")
     if api_key:
@@ -113,31 +122,40 @@ async def signup(body: LoginRequest):
         try:
             token = firebase_auth.create_custom_token(user.uid).decode("utf-8")
         except Exception:
-            token = "stub-firebase-id-token"
+            token = ""
 
     return TokenResponse(
         uid=user.uid,
         email=user.email,
         token=token,
-        display_name=getattr(user, "display_name", None)
+        display_name=body.display_name,
+        role=body.role,
     )
 
 
 @router.get("/me", response_model=UserProfileResponse, summary="Get current user profile")
 async def get_me(decoded_token: dict = Depends(verify_token)):
-    """
-    Returns the current user profile based on the verified token.
-    """
+    uid = decoded_token.get("uid")
+    email = decoded_token.get("email", "")
+    display_name = decoded_token.get("name")
+
+    # Fetch role from Firestore — do NOT expose raw uid in response beyond what's needed
+    role = "worker"
+    if db is not None:
+        doc = db.collection("users").document(uid).get()
+        if doc.exists:
+            data = doc.to_dict()
+            role = data.get("role", "worker")
+            display_name = display_name or data.get("display_name")
+
     return UserProfileResponse(
-        uid=decoded_token.get("uid"),
-        email=decoded_token.get("email", ""),
-        display_name=decoded_token.get("name")
+        uid=uid,
+        email=email,
+        display_name=display_name,
+        role=role,
     )
 
 
 @router.post("/logout", summary="Log out current user")
 async def logout():
-    """
-    STUB — Logout is handled client-side by revoking the Firebase token.
-    """
-    return {"message": "Logout stub — revoke token client-side via Firebase Auth SDK."}
+    return {"message": "Logout handled client-side — revoke Firebase token via Auth SDK."}
