@@ -11,4 +11,6 @@ class AppRoutes {
   static const String atRiskTasks = '/at-risk-tasks';
   static const String alerts = '/alerts';
   static const String notifications = '/notifications';
+  static const String team = '/team';
+  static const String teamMemberDetails = '/team/:id';
 }

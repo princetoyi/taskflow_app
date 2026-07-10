@@ -49,6 +49,13 @@ class TaskListScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, Authenticated state) {
+    final tasks = context.select<TaskBloc, List<Task>>((bloc) => (bloc.state is TaskLoaded) ? (bloc.state as TaskLoaded).tasks : <Task>[]);
+    final dueTodayCount = tasks.where((task) => task.status != TaskStatus.completed && _isSameDay(task.deadline, DateTime.now())).length;
+    final overdueCount = tasks.where((task) => task.status != TaskStatus.completed && task.deadline.isBefore(DateTime.now())).length;
+    final totalOpenCount = tasks.where((task) => task.status != TaskStatus.completed).length;
+    final greeting = _buildGreeting();
+    final displayName = state.user.displayName.isNotEmpty ? state.user.displayName.split(' ').first : 'there';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
@@ -93,7 +100,7 @@ class TaskListScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('Today · 4 tasks to tackle', style: Theme.of(context).textTheme.bodyMedium),
+          Text('Today · $totalOpenCount tasks to tackle', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
@@ -105,17 +112,17 @@ class TaskListScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Good morning, Sarah 👋', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('$greeting, $displayName 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
                 const SizedBox(height: 6),
-                const Text('You have 4 tasks to tackle today', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                Text('You have $totalOpenCount tasks to tackle today', style: const TextStyle(fontSize: 12, color: Colors.white70)),
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    _buildStatPill('4', 'Due Today', AppColors.mint),
+                    _buildStatPill('$dueTodayCount', 'Due Today', AppColors.mint),
                     const SizedBox(width: 10),
-                    _buildStatPill('1', 'Overdue', AppColors.accent),
+                    _buildStatPill('$overdueCount', 'Overdue', AppColors.accent),
                     const SizedBox(width: 10),
-                    _buildStatPill('6', 'Total Open', const Color(0xFF7C9EFF)),
+                    _buildStatPill('$totalOpenCount', 'Total Open', const Color(0xFF7C9EFF)),
                   ],
                 ),
               ],
@@ -143,7 +150,7 @@ class TaskListScreen extends StatelessWidget {
                   Text(state.message, textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: () => context.read<TaskBloc>().add(const LoadTasks()),
+                    onPressed: () => context.read<TaskBloc>().add(const FetchTasksRequested()),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -165,7 +172,7 @@ class TaskListScreen extends StatelessWidget {
 
         return RefreshIndicator(
           onRefresh: () async {
-            context.read<TaskBloc>().add(const LoadTasks());
+            context.read<TaskBloc>().add(const FetchTasksRequested());
           },
           child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(14, 16, 14, 100),
@@ -217,6 +224,24 @@ class TaskListScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _buildGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good morning';
+    }
+    if (hour < 18) {
+      return 'Good afternoon';
+    }
+    return 'Good evening';
+  }
+
+  static bool _isSameDay(DateTime? value, DateTime reference) {
+    if (value == null) {
+      return false;
+    }
+    return value.year == reference.year && value.month == reference.month && value.day == reference.day;
   }
 
   Widget _buildStatPill(String value, String label, Color accentColor) {

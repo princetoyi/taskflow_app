@@ -9,12 +9,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   TaskBloc(this.taskRepository) : super(const TaskInitial()) {
     on<LoadTasks>(_onLoadTasks);
+    on<FetchTasksRequested>(_onLoadTasks);
     on<CreateTask>(_onCreateTask);
+    on<CreateTaskRequested>(_onCreateTask);
     on<UpdateTask>(_onUpdateTask);
+    on<UpdateTaskRequested>(_onUpdateTask);
     on<DeleteTask>(_onDeleteTask);
+    on<DeleteTaskRequested>(_onDeleteTask);
   }
 
-  Future<void> _onLoadTasks(LoadTasks event, Emitter<TaskState> emit) async {
+  Future<void> _onLoadTasks(FetchTasksRequested event, Emitter<TaskState> emit) async {
     emit(const TaskLoading());
     try {
       final tasks = await taskRepository.getTasks(
@@ -39,7 +43,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-  Future<void> _onCreateTask(CreateTask event, Emitter<TaskState> emit) async {
+  Future<void> _onCreateTask(CreateTaskRequested event, Emitter<TaskState> emit) async {
     final currentTasks = state is TaskLoaded ? (state as TaskLoaded).tasks : <Task>[];
     emit(const TaskLoading());
     try {
@@ -51,7 +55,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-  Future<void> _onUpdateTask(UpdateTask event, Emitter<TaskState> emit) async {
+  Future<void> _onUpdateTask(UpdateTaskRequested event, Emitter<TaskState> emit) async {
     final currentTasks = state is TaskLoaded ? (state as TaskLoaded).tasks : <Task>[];
     final updatedTasks = currentTasks.map((task) {
       return task.id == event.task.id ? event.task : task;
@@ -66,7 +70,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-  Future<void> _onDeleteTask(DeleteTask event, Emitter<TaskState> emit) async {
+  Future<void> _onDeleteTask(DeleteTaskRequested event, Emitter<TaskState> emit) async {
     final currentTasks = state is TaskLoaded ? (state as TaskLoaded).tasks : <Task>[];
     final updatedTasks = currentTasks.where((task) => task.id != event.taskId).toList();
     emit(TaskLoaded(updatedTasks));

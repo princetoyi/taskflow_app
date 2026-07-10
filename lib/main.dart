@@ -88,7 +88,7 @@ Future<void> main() async {
           BlocProvider.value(value: themeBloc),
           BlocProvider.value(value: notificationBloc),
           BlocProvider<TaskBloc>(
-            create: (_) => TaskBloc(taskRepository)..add(const LoadTasks()),
+            create: (_) => TaskBloc(taskRepository)..add(const FetchTasksRequested()),
           ),
         ],
         child: TaskFlowApp(authBloc: authBloc, router: router),

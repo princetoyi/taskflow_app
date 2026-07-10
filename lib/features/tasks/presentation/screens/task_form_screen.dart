@@ -74,7 +74,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     );
 
     final bloc = context.read<TaskBloc>();
-    bloc.add(widget.initialTask == null ? CreateTask(task) : UpdateTask(task));
+    bloc.add(widget.initialTask == null 
+      ? CreateTaskRequested(task) 
+      : UpdateTaskRequested(task: task));
 
     await bloc.stream.firstWhere((state) => state is! TaskLoading);
     if (!mounted) return;

@@ -101,7 +101,7 @@ class LocalNotificationService {
             presentSound: true,
           );
 
-      final NotificationDetails details = NotificationDetails(
+      const NotificationDetails details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
