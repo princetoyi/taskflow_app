@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:taskflow_app/core/constants/app_colors.dart';
+import 'package:taskflow_app/routes/app_routes.dart';
 import 'package:taskflow_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:taskflow_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:taskflow_app/features/tasks/domain/entities/task.dart';
@@ -89,7 +90,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       return;
     }
 
-    context.pop();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.dashboard);
+    }
   }
 
   Future<void> _pickDeadline() async {

@@ -24,11 +24,21 @@ def initialize_firebase() -> None:
         logger.info("Firebase already initialised — skipping")
         return
 
-    # Use .env override if set, otherwise fall back to default path
-    service_account_path = os.environ.get(
-        "FIREBASE_SERVICE_ACCOUNT_PATH",
-        DEFAULT_SERVICE_ACCOUNT_PATH
+    # Use .env override if set, otherwise fall back to default path.
+    # Accept both FIREBASE_SERVICE_ACCOUNT_PATH and FIREBASE_SERVICE_ACCOUNT —
+    # both names have been used in this project's .env across its history.
+    service_account_path = (
+        os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH")
+        or os.environ.get("FIREBASE_SERVICE_ACCOUNT")
+        or DEFAULT_SERVICE_ACCOUNT_PATH
     )
+
+    # A relative path is conventionally kept at the project root (one level
+    # above backend/), not inside backend/ itself — check there too.
+    if not os.path.isabs(service_account_path) and not os.path.exists(service_account_path):
+        project_root_candidate = os.path.join(os.path.dirname(BASE_DIR), service_account_path)
+        if os.path.exists(project_root_candidate):
+            service_account_path = project_root_candidate
 
     # Fail at startup so misconfiguration is caught early, not at first request
     if not os.path.exists(service_account_path):

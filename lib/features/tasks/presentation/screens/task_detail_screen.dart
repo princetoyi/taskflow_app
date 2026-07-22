@@ -48,7 +48,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             onPressed: () {
               final taskToEdit = task ?? widget.initialTask;
               if (taskToEdit != null) {
-                context.go(AppRoutes.taskCreate, extra: taskToEdit);
+                context.push(AppRoutes.taskCreate, extra: taskToEdit);
               }
             },
           ),
@@ -288,7 +288,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 context.read<TaskBloc>().add(DeleteTaskRequested(widget.taskId));
-                context.pop();
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go(AppRoutes.tasks);
+                }
               },
               child: const Text('Delete'),
             ),

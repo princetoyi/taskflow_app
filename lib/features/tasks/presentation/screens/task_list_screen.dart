@@ -38,7 +38,7 @@ class TaskListScreen extends StatelessWidget {
             ),
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => context.go(AppRoutes.taskCreate),
+            onPressed: () => context.push(AppRoutes.taskCreate),
             label: const Text('New Task'),
             icon: const Icon(Icons.add),
             backgroundColor: AppColors.accent,
@@ -164,7 +164,7 @@ class TaskListScreen extends StatelessWidget {
             title: 'No tasks yet',
             description: 'Create a task to begin tracking work and deadlines.',
             actionLabel: 'Create task',
-            onAction: () => context.go(AppRoutes.taskCreate),
+            onAction: () => context.push(AppRoutes.taskCreate),
           );
         }
 
@@ -204,7 +204,7 @@ class TaskListScreen extends StatelessWidget {
                 },
                 child: TaskCard(
                   task: task,
-                  onTap: () => context.go(AppRoutes.taskDetail.replaceFirst(':id', task.id), extra: task),
+                  onTap: () => context.push(AppRoutes.taskDetail.replaceFirst(':id', task.id), extra: task),
                   onToggleStatus: () => context.read<TaskBloc>().add(UpdateTask(_toggleStatus(task))),
                   onDelete: () async {
                     final taskBloc = context.read<TaskBloc>();

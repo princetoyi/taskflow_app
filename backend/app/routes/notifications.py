@@ -16,7 +16,7 @@ class FCMTokenUpdate(BaseModel):
     fcm_token: str
 
 
-@router.get("/")
+@router.get("")
 async def get_notifications(user: dict = Depends(get_current_user)):
     # Fetch all notifications for the logged-in user
     db = firestore.client()

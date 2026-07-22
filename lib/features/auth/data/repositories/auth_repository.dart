@@ -63,6 +63,7 @@ class AuthRepository {
     required String name,
     required String email,
     required String password,
+    String role = 'employee',
   }) async {
     if (!await connectivityService.hasConnection) {
       throw AppException('No internet connection. Please try again when you are online.');
@@ -78,8 +79,12 @@ class AuthRepository {
       final idToken = await authService.getFirebaseIdToken();
       await storageService.saveToken(idToken);
 
-      // Fetch user profile from backend to get role
-      final profileData = await apiClient.get<Map<String, dynamic>>('/auth/me');
+      // Creates the Firestore profile with the chosen role — a no-op if it
+      // somehow already exists (role is only ever set at creation time).
+      final profileData = await apiClient.post<Map<String, dynamic>>(
+        '/auth/complete-signup',
+        data: {'role': role},
+      );
 
       return AuthUserModel(
         uid: user.uid,

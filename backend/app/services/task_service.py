@@ -67,8 +67,16 @@ async def get_tasks(
     offset = (page - 1) * page_size
     query = query.limit(page_size).offset(offset)
 
-    docs = query.stream()
-    return [TaskResponse(**doc.to_dict()) for doc in docs]
+    try:
+        docs = query.stream()
+        return [TaskResponse(**doc.to_dict()) for doc in docs]
+    except Exception as e:
+        # Any Firestore-level failure here (e.g. a missing composite index)
+        # must surface as an HTTPException, not an unhandled exception —
+        # unhandled exceptions escape FastAPI's normal error-handling
+        # middleware and land outside CORSMiddleware, which means the
+        # browser sees a bare CORS failure instead of the real error.
+        raise HTTPException(status_code=500, detail=f"Failed to fetch tasks: {e}")
 
 
 async def get_task(uid: str, task_id: str) -> TaskResponse:

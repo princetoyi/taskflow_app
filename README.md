@@ -2,28 +2,34 @@
 
 TaskFlow is a task-management app for organising tasks, tracking progress, and boosting productivity. Built with Flutter and Firebase, with a FastAPI Python backend for server-side logic.
 
+> **Status (2026-07-22):** the backend and frontend are wired together and verified working end-to-end (auth, tasks, notifications, theme, profile). See [`docs/AUDIT.md`](docs/AUDIT.md) for the full history of what was broken and what's been fixed. The one remaining known gap is documented under [Known Limitations](#-known-limitations) below.
+
 ---
 
 ## 📌 About
 
-TaskFlow is designed for individuals and teams who want to manage tasks and projects effectively. Users can:
-- Add, edit, and delete tasks
-- Set deadlines and priorities
-- View tasks on a dashboard
-- Track progress over time
+TaskFlow is designed for individuals who want to manage tasks effectively, with the data model in place for team roles to grow into. Users can:
+- Sign up choosing a role (Employee or Manager)
+- Add, edit, delete, and complete tasks with priority and deadline
+- View a dashboard with live task statistics
+- Get push notifications for upcoming deadlines, with tap-to-open deep links
+- Edit their profile (name, phone) and change their password
+- Switch between light/dark theme, persisted server-side
 
-The app leverages **Firebase** for real-time data synchronisation, **Flutter** for a responsive cross-platform experience, and **FastAPI** for a scalable Python backend.
+The app uses **Firebase Auth** for authentication (ID tokens, verified server-side), **Cloud Firestore** as the database (accessed only through the backend — the client never talks to Firestore directly), **Flutter** for the cross-platform UI, and **FastAPI** for the backend API.
 
 ---
 
 ## ✨ Features
 
-- **Authentication** – Sign up, log in, and log out securely via Firebase Auth.
-- **Task Management** – Create, edit, delete, and mark tasks as completed.
-- **Dashboard** – View tasks sorted by priority, deadline, or completion status.
-- **Profile Management** – Update user information and preferences.
-- **Responsive UI** – Works on mobile, tablet, and web.
-- **Notifications** – Notifies users when there are updates.
+- **Authentication** — Sign up (with role selection), log in, log out, and stay signed in across restarts, all via Firebase Auth ID tokens verified by the backend.
+- **Task Management** — Create, edit, delete, and mark tasks complete. Tasks are scoped per-owner (`owner_uid`) with priority (`low`/`medium`/`high`) and a deadline.
+- **Dashboard** — Live counts (total, completed, pending, overdue, high-priority) computed from real task data, plus a recent-tasks list.
+- **Profile** — View and edit display name, first/last name, and phone number; change password (re-verified server-side before applying).
+- **Notifications** — In-app notification list backed by Firestore, plus FCM push for deadline reminders (hourly scheduled job) with deep-link-to-task on tap.
+- **Theme** — Light/dark mode toggle, persisted to the user's Firestore profile.
+- **Offline cache** — Tasks are cached locally in Hive; mutations made offline are queued and replayed automatically when connectivity returns.
+- **Responsive UI** — Runs on Android, iOS, and web (Chrome).
 
 ---
 
@@ -31,12 +37,14 @@ The app leverages **Firebase** for real-time data synchronisation, **Flutter** f
 
 | Layer | Technology |
 |---|---|
-| Flutter App | Flutter 3 / Dart |
-| HTTP Client | Dio + AuthInterceptor |
-| State Management | Provider |
-| Auth & Database | Firebase Auth + Cloud Firestore |
-| Backend | Python 3.10+ / FastAPI |
-| Backend Auth | Firebase Admin SDK |
+| Flutter App | Flutter 3.x / Dart, Material 3 |
+| State Management | `flutter_bloc` (BLoC pattern) throughout — auth, tasks, notifications, theme, profile |
+| HTTP Client | Dio, with auth/retry/error/response-cache interceptors |
+| Local Storage | Hive (task cache + offline sync queue), `flutter_secure_storage` (auth token) |
+| Auth & Database | Firebase Auth (client SDK) + Cloud Firestore (server-side only, via Admin SDK) |
+| Backend | Python 3.12+ / FastAPI |
+| Backend Auth | Firebase Admin SDK (`verify_id_token`) |
+| Scheduled Jobs | APScheduler (hourly deadline-reminder push) |
 | Version Control | Git & GitHub |
 
 ---
@@ -44,34 +52,49 @@ The app leverages **Firebase** for real-time data synchronisation, **Flutter** f
 ## 📂 Project Structure
 
 ```
-taskflow_app/               ← Repo root (Flutter Application)
-├── lib/                    ← Flutter dart source code
-│   ├── core/
+taskflow_app/                     ← Repo root (Flutter app)
+├── lib/
+│   ├── core/                     ← Shared infra: network client, DI, services, widgets
 │   ├── features/
-│   ├── routes/
-│   └── services/
-├── backend/                ← FastAPI Python backend
-│   ├── app/                ← Legacy backend implementation
-│   ├── core/               ← Core configuration & Firebase Admin init
-│   ├── routers/            ← API Route handlers (/auth, /tasks)
-│   ├── main.py             ← FastAPI app + CORS middleware
+│   │   ├── auth/                 ← Login, signup, session (Firebase Auth + /auth/me)
+│   │   ├── tasks/                ← Task CRUD, offline sync
+│   │   ├── dashboard/            ← Task statistics + quick actions
+│   │   ├── notifications/        ← Notification list + FCM
+│   │   ├── settings/             ← Theme toggle
+│   │   └── profile/              ← View/edit profile, change password
+│   ├── routes/                   ← go_router config
+│   └── main.dart
+├── backend/
+│   ├── app/
+│   │   ├── main.py               ← FastAPI entrypoint (this is the only backend tree — see note below)
+│   │   ├── firebase_config.py    ← Firebase Admin SDK init
+│   │   ├── middleware/           ← JWT (Firebase ID token) verification
+│   │   ├── models/                ← Pydantic request/response schemas
+│   │   ├── routes/                ← /auth, /tasks, /users, /notifications
+│   │   ├── services/              ← Business logic + Firestore access
+│   │   └── tests/
+│   ├── Dockerfile
 │   └── requirements.txt
-├── .env                    ← Environment Variables (Firebase Config)
-└── pubspec.yaml            ← Flutter dependencies
+├── firestore.rules               ← Denies all direct client access — the backend is the only writer
+├── firestore.indexes.json        ← Composite indexes required by the tasks/notifications queries
+├── .env                          ← Environment variables (see below) — gitignored, never committed
+└── pubspec.yaml
 ```
+
+> **Note on backend structure:** an earlier merge left two complete, parallel backend implementations in this repo (`backend/main.py` + `backend/routers/` + `backend/core/`, alongside `backend/app/`). They've since been reconciled — the old tree was deleted and everything it had that the app actually needed (`/auth/me`, `/auth/logout`, role support) was ported into `backend/app/`, which is what `backend/Dockerfile` runs. If you see references to `backend/routers/` or `backend/core/` anywhere (old commits, cached docs), they're gone — `backend/app/` is the only backend now.
 
 ---
 
-## 🚀 Local Setup — All Three Platforms
+## 🚀 Local Setup
 
-### Prerequisites (all platforms)
+### Prerequisites
 
 | Tool | Minimum version | Install |
 |---|---|---|
 | Git | Any | https://git-scm.com |
 | Flutter SDK | 3.x | https://docs.flutter.dev/get-started/install |
-| Python | 3.10+ | https://python.org |
-| Firebase CLI | Latest | `npm install -g firebase-tools` |
+| Python | 3.12+ | https://python.org |
+| Firebase CLI | Latest (only needed to deploy rules/indexes) | `npm install -g firebase-tools` |
 
 ---
 
@@ -84,25 +107,46 @@ cd taskflow_app
 
 ---
 
-### 2. Firebase Setup (One-time — shared credential)
+### 2. Firebase Setup (one-time, shared project)
 
-> **Day 1 task.** The Firebase project must be created before the backend or app can run.
-
-1. Go to [Firebase Console](https://console.firebase.google.com) → Create project `taskflow-app`.
-2. Enable **Email/Password** under Authentication → Sign-in methods.
-3. Create a **Cloud Firestore** database (start in test mode for development).
-4. Go to Project Settings → Service Accounts → **Generate new private key**.
-5. Save the downloaded JSON as `taskflow_serviceAccountkey.json` in the root directory (this file is gitignored).
-6. Create an `.env` file in the root directory (you can copy `.env.example` as a starting point) and update the values:
+1. Firebase project already exists (`taskflow-33cf5`). If setting up a new project instead: [Firebase Console](https://console.firebase.google.com) → Create project → enable **Email/Password** auth → create a **Cloud Firestore** database.
+2. Get the service account key: Project Settings → Service Accounts → **Generate new private key**. Save the JSON at the **repo root** (not inside `backend/`) — it's already gitignored regardless of the exact filename.
+3. Create `.env` at the **repo root** (used by both the backend and the Flutter app):
 
 ```env
-FIREBASE_SERVICE_ACCOUNT=taskflow_serviceAccountkey.json
-DATABASE_URL=https://taskflow-app-default-rtdb.firebaseio.com
-FIREBASE_API_KEY="your-api-key"
-...
+# Backend API base URL — used by the Flutter app's Dio client.
+# Android emulator can't reach "localhost" (that's the emulator's own
+# loopback), hence the separate 10.0.2.2 alias that routes to the host.
+BASE_URL=http://localhost:8000
+BASE_URL_ANDROID=http://10.0.2.2:8000
+BASE_URL_IOS=http://localhost:8000
+BASE_URL_WEB=http://localhost:8000
+
+# Firebase Admin SDK (backend) — either name works, both are checked
+FIREBASE_SERVICE_ACCOUNT=your-service-account-filename.json
+# FIREBASE_SERVICE_ACCOUNT_PATH is also accepted, same meaning
+
+# Firebase Web API key — used by the backend's REST sign-in call
+# (Admin SDK can't verify a password itself). Either name works.
+FIREBASE_API_KEY=your-web-api-key
+# FIREBASE_WEB_API_KEY is also accepted, same meaning
+
+# Firebase Web config (used by the Flutter web build)
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=...
+FIREBASE_APP_ID=...
+FIREBASE_MEASUREMENT_ID=...
 ```
 
-> **Note:** The backend automatically resolves relative service account paths relative to the project root directory, even if you start the server from inside the `backend` folder.
+> The backend resolves a relative `FIREBASE_SERVICE_ACCOUNT` path against the **repo root**, regardless of whether you launch uvicorn from `backend/` or elsewhere — no need to duplicate the key file.
+
+4. Deploy Firestore rules and indexes (rules deny all direct client access by design — the backend is the only writer):
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
 
 ---
 
@@ -110,29 +154,27 @@ FIREBASE_API_KEY="your-api-key"
 
 ```bash
 cd backend
-
-# Create and activate a virtual environment
 python -m venv venv
 
 # Windows
 venv\Scripts\activate
-
 # macOS/Linux
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Test Firebase Admin SDK initialisation (requires .env to be configured)
-python -c "from core.firebase import db; print('Firestore connected:', db)"
-
-# Start the dev server
-uvicorn main:app --reload --port 8000
+# Start the dev server (note: app.main, not main — see structure note above)
+uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at:
 - **Swagger UI:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
+- **Health check:** http://localhost:8000/health
+
+See [`docs/SWAGGER_UI_GUIDE.md`](docs/SWAGGER_UI_GUIDE.md) for a full walkthrough, including how to get a real Firebase ID token to authorize requests (there is no stub/dummy token — every protected route verifies a real token via the Admin SDK).
+
+**CORS:** the backend allows any `http://localhost:<port>` origin (`allow_origin_regex`), since `flutter run -d chrome` picks a random port per run. Tighten this in `backend/app/main.py` before deploying to a real production origin.
 
 ---
 
@@ -140,62 +182,44 @@ The API will be available at:
 
 ```bash
 # From the repository root
-
-# Install all Flutter dependencies
 flutter pub get
 ```
 
 #### Firebase Flutter Configuration
 
-Before running the app, configure Firebase for each target platform using the FlutterFire CLI:
-
 ```bash
-# Install FlutterFire CLI (once)
 dart pub global activate flutterfire_cli
-
-# Configure — follow the prompts to select your Firebase project
 flutterfire configure
 ```
 
-This generates `lib/firebase_options.dart`. Alternatively, you can use the environment variables in your `.env` file for web.
-
-```dart
-import '../firebase_options.dart';
-await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-```
+This generates `lib/firebase_options.dart` (gitignored, not committed — every developer generates their own).
 
 #### Run on Each Platform
 
 ```bash
-# Android (connect device or start emulator first)
+# Android (emulator or device)
 flutter run -d android
 
-# iOS (macOS only, with Xcode installed)
+# iOS (macOS only, with Xcode)
 flutter run -d ios
 
 # Web
 flutter run -d chrome
 ```
 
----
-
-### 5. Postman — Testing the API
-
-1. Open Postman → **Import** → select `docs/taskflow_api.postman_collection.json`.
-2. Set the `auth_token` collection variable to a valid Firebase ID token.
-   - Sign in on the Flutter app, then call `await FirebaseAuth.instance.currentUser!.getIdToken()` from the Dart console or a debug button.
-3. All endpoints are ready to test — stubs return sample data immediately.
+The backend must be running (step 3) before the app can log in or do anything past the login screen.
 
 ---
 
 ## 🔑 Environment Variables Reference
 
-| Variable | Description | Example |
+| Variable | Used by | Description |
 |---|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | Path to service account JSON (absolute or relative to root) | `taskflow_serviceAccountkey.json` |
-| `DATABASE_URL` | Firebase RTDB URL (optional) | `https://app-default-rtdb.firebaseio.com` |
-| `FIREBASE_API_KEY` | Firebase API Key (for testing Auth / Login REST API) | `AIzaSy...` |
-| `FIREBASE_PROJECT_ID` | Firebase Project ID | `taskflow-33cf5` |
+| `BASE_URL`, `BASE_URL_ANDROID`, `BASE_URL_IOS`, `BASE_URL_WEB` | Flutter | Backend base URL per platform. Required — the app cannot reach the backend without these. |
+| `FIREBASE_SERVICE_ACCOUNT` (or `FIREBASE_SERVICE_ACCOUNT_PATH`) | Backend | Path to the service account JSON, resolved against the repo root if relative. |
+| `FIREBASE_API_KEY` (or `FIREBASE_WEB_API_KEY`) | Backend | Firebase Web API key, used for the REST sign-in call during `/auth/login` and password-change verification. |
+| `DATABASE_URL` | Unused currently | Legacy Realtime Database URL — the app uses Firestore, not RTDB. Safe to leave as a placeholder. |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`, `FIREBASE_MEASUREMENT_ID` | Flutter (web) | Firebase Web SDK config. |
 
 ---
 
@@ -205,18 +229,19 @@ flutter run -d chrome
 # Flutter unit & widget tests
 flutter test
 
-# Python backend tests
+# Python backend tests (mocked — never hit real Firebase)
 cd backend
 pytest
 ```
 
 ---
 
-## 🚧 Known Blockers (Sprint 1)
+## 🚧 Known Limitations
 
-- Firebase Service Account JSON must be obtained from the project owner and stored locally (never committed).
-- Flutter `firebase_options.dart` must be generated via `flutterfire configure` — not committed to the repo.
-- CORS `ALLOWED_ORIGINS` in `backend/main.py` must be updated with the production Flutter web URL before deployment.
+- **Cloud Storage is not provisioned** for this Firebase project — confirmed directly (no bucket exists under any naming convention). Profile photo upload has a working backend endpoint (`POST /users/profile/image`) but will fail until Storage is enabled in the Firebase Console; the Profile screen deliberately doesn't expose a photo-upload button yet.
+- **Web push notifications don't register** — there's no `web/` platform directory in the repo, so `firebase-messaging-sw.js` has nowhere to live. Native (Android/iOS) push works.
+- **No team/manager-assignment feature** — a `role` (`employee`/`manager`/`admin`) exists on every user and is chosen at signup, and admin-only user-management endpoints exist (`GET/PATCH/DELETE /users/{id}`), but there's no `assignee_uid` on tasks and no manager→team grouping. This was explicitly deferred — see `docs/AUDIT.md` for the reasoning.
+- CORS is a permissive `localhost:*` regex, correct for local dev only — must be locked to the real origin before any production deployment.
 
 ---
 

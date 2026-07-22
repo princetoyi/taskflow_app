@@ -8,17 +8,15 @@
 
 ## Prerequisites
 
-Make sure you have completed the backend setup from the `README.md`:
+Make sure you have completed the backend setup from the root [`README.md`](../README.md):
 
-- Python 3.10+ installed
-- Virtual environment created and dependencies installed
-- `backend/.env` file present (even with placeholder values)
+- Python 3.12+ installed
+- Virtual environment created and dependencies installed (`pip install -r requirements.txt`)
+- `.env` present at the **repo root** with real Firebase config (a real service account key and web API key — there is no stub/dummy mode; every protected route verifies a real Firebase ID token)
 
 ---
 
 ## Step 1 — Start the Backend Server
-
-Open a terminal, navigate to the `backend/` folder, and activate the virtual environment:
 
 ```bash
 cd taskflow_app/backend
@@ -34,178 +32,136 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-Then start the server with hot-reload:
+Start the server:
 
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
-You should see output like this — the server is ready when you see `Application startup complete`:
+> Note the entrypoint is `app.main:app`, not `main:app` — the backend used to have two parallel implementations (`backend/main.py` and `backend/app/main.py`) from an old merge; only `backend/app/` exists now.
+
+You should see:
 
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [XXXX] using WatchFiles
 INFO:     Started server process [XXXX]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ```
 
-> ⚠️ If you see a Firebase warning about missing credentials, that's fine —
-> the stubs will still work and Swagger UI will be fully functional.
+If startup fails with `FileNotFoundError: Service account key not found`, your `.env`'s `FIREBASE_SERVICE_ACCOUNT` doesn't point at a real file — see the root README's environment variable reference.
 
 ---
 
 ## Step 2 — Open Swagger UI
 
-With the server running, open your browser and go to:
-
 ```
 http://localhost:8000/docs
 ```
 
-You will see the **TaskFlow API** Swagger UI with all endpoints grouped by tag:
+Endpoints, grouped by tag:
 
 | Tag | Endpoints |
 |---|---|
 | `health` | `GET /`, `GET /health` |
-| `auth` | `POST /auth/login`, `POST /auth/register`, `GET /auth/me`, `POST /auth/logout` |
-| `tasks` | `GET /tasks/`, `POST /tasks/`, `GET /tasks/{id}`, `PATCH /tasks/{id}`, `DELETE /tasks/{id}` |
+| `Authentication` | `POST /auth/signup`, `POST /auth/login`, `GET /auth/me`, `POST /auth/complete-signup`, `POST /auth/logout` |
+| `Tasks` | `GET /tasks`, `POST /tasks`, `GET /tasks/{task_id}`, `PUT /tasks/{task_id}`, `DELETE /tasks/{task_id}` |
+| `Users` | `GET/PUT /users/preferences`, `GET/PATCH /users/profile`, `POST /users/profile/change-password`, `POST /users/profile/image`, `GET /users`, `GET/PATCH/DELETE /users/{user_id}` |
+| `Notifications` | `GET /notifications`, `PUT /notifications/{notification_id}/read`, `POST /notifications/fcm-token` |
 
-> **Alternative docs view:** http://localhost:8000/redoc (ReDoc format, better for reading)
+> **Alternative docs view:** http://localhost:8000/redoc
 
 ---
 
-## Step 3 — Test an Endpoint
+## Step 3 — Get a Real Firebase ID Token
 
-### Testing a public endpoint (no auth required)
+There is no stub/dummy bearer token — every protected route calls `firebase_admin.auth.verify_id_token()`, which validates a real token against your Firebase project. To get one:
 
-1. Click **`GET /`** to expand it
-2. Click **"Try it out"** (top-right of the endpoint panel)
-3. Click the blue **"Execute"** button
-4. Scroll down to **Responses** — you should see:
+**Easiest — from the running Flutter app:**
+1. Run the app (`flutter run -d chrome`) and log in or sign up.
+2. Add a temporary debug line anywhere after login (e.g. in a button's `onPressed`), or use the debug console:
+   ```dart
+   print(await FirebaseAuth.instance.currentUser!.getIdToken());
+   ```
+3. Copy the printed token (it's long — a JWT).
 
-```json
-{
-  "status": "ok",
-  "service": "TaskFlow API",
-  "version": "0.1.0"
-}
+**Without the app — via the Identity Toolkit REST API** (needs `FIREBASE_API_KEY` from your `.env`):
+```bash
+curl -s -X POST \
+  "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=YOUR_FIREBASE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"yourpassword","returnSecureToken":true}'
 ```
+The response's `idToken` field is your bearer token. It expires after an hour — repeat as needed.
 
 ---
 
-### Testing a protected endpoint (requires Authorization header)
+## Step 4 — Test an Endpoint
 
-Protected endpoints require a `Bearer` token in the `Authorization` header.
-While using stubs, you can use any dummy token.
+### Public endpoint (no auth)
 
-#### Option A — Set the token per-request
-
-1. Click **`GET /tasks/`** to expand it
-2. Click **"Try it out"**
-3. In the **`authorization`** field, type:
-   ```
-   Bearer stub-firebase-id-token
-   ```
-4. Click **"Execute"**
-5. You should see the stub task list returned with status `200`
-
-#### Option B — Authorise globally (applies to all endpoints at once)
-
-1. Click the **"Authorize 🔓"** button at the top-right of the Swagger UI page
-2. In the dialog, enter:
-   ```
-   Bearer stub-firebase-id-token
-   ```
-3. Click **"Authorize"** → **"Close"**
-4. All protected endpoints will now send this token automatically
+1. Expand **`GET /health`**
+2. **"Try it out"** → **"Execute"**
+3. Expect `{"status": "healthy"}`
 
 ---
 
-## Step 4 — Test Each Endpoint
+### Protected endpoint
 
-### `POST /auth/login`
+#### Option A — per-request
+
+1. Expand **`GET /tasks`** → **"Try it out"**
+2. In **Authorization**, enter: `Bearer <your real ID token>`
+3. **"Execute"** — expect `200` with your real tasks (an empty array if you have none yet)
+
+#### Option B — authorize globally
+
+1. Click **"Authorize 🔓"** at the top of the page
+2. Enter `Bearer <your real ID token>`
+3. **"Authorize"** → **"Close"** — every protected endpoint now sends this token automatically until it expires
+
+---
+
+## Step 5 — Try the Full Flow
+
+### `POST /auth/complete-signup`
+Call this once after a real signup (see `FLUTTER_README.md` — this is the actual profile-creation step, not `POST /auth/signup`):
 ```json
-{
-  "email": "test@example.com",
-  "password": "Password123!"
-}
+{ "role": "employee" }
 ```
-**Expected:** `200` with a stub token response
+`role` must be `"employee"` or `"manager"` — `"admin"` is rejected by validation; it's not a self-signup choice.
 
----
-
-### `POST /auth/register`
-```json
-{
-  "email": "newuser@example.com",
-  "password": "Password123!"
-}
-```
-**Expected:** `201` with a confirmation message
-
----
-
-### `GET /auth/me`
-- Set `Authorization: Bearer stub-firebase-id-token`
-
-**Expected:** `200` with a stub user profile
-
----
-
-### `GET /tasks/`
-- Set `Authorization: Bearer stub-firebase-id-token`
-
-**Expected:** `200` with a list of two stub tasks
-
----
-
-### `POST /tasks/`
+### `POST /tasks`
 ```json
 {
   "title": "Write unit tests",
-  "description": "Cover auth and task providers"
+  "description": "Cover auth and task flows",
+  "priority": "medium",
+  "deadline": "2026-08-01T00:00:00"
 }
 ```
-- Set `Authorization: Bearer stub-firebase-id-token`
+**Expected:** `200` with the created task, including a real Firestore-generated `id` and `owner_uid` matching your token's uid.
 
-**Expected:** `201` with the new task echoed back
+### `GET /tasks`
+**Expected:** `200` with a list of your tasks. Supports `status` (`completed`/`pending`), `priority`, `sort_by`, `order`, `page`, `page_size` as query params.
 
----
-
-### `GET /tasks/{task_id}`
-- Set `task_id` to `task-001`
-- Set `Authorization: Bearer stub-firebase-id-token`
-
-**Expected:** `200` with the matching stub task
-
----
-
-### `PATCH /tasks/{task_id}`
-- Set `task_id` to `task-001`
-- Body:
+### `PUT /tasks/{task_id}`
 ```json
-{
-  "is_completed": true
-}
+{ "completed": true }
 ```
-- Set `Authorization: Bearer stub-firebase-id-token`
-
-**Expected:** `200` with the task returned with `is_completed: true`
-
----
+**Expected:** `200` with the task updated. Only send the fields you want changed.
 
 ### `DELETE /tasks/{task_id}`
-- Set `task_id` to `task-001`
-- Set `Authorization: Bearer stub-firebase-id-token`
+**Expected:** `200`, task removed.
 
-**Expected:** `204 No Content` (empty response body)
+### `GET /users/profile`
+**Expected:** `200` with your full profile (self-heals into existence if it somehow doesn't exist yet).
 
 ---
 
-## Step 5 — Stop the Server
+## Step 6 — Stop the Server
 
-Press **`CTRL + C`** in the terminal where uvicorn is running.
+Press **`CTRL + C`** in the terminal running uvicorn.
 
 ---
 
@@ -213,23 +169,11 @@ Press **`CTRL + C`** in the terminal where uvicorn is running.
 
 | Problem | Fix |
 |---|---|
-| `address already in use` on port 8000 | Another process is using port 8000. Run on a different port: `uvicorn main:app --reload --port 8001` and visit `http://localhost:8001/docs` |
-| `ModuleNotFoundError` | Make sure your venv is activated before running uvicorn |
-| Firebase warning on startup | Expected — credentials not yet configured. Stubs still work. |
-| `422 Unprocessable Entity` | Check your request body matches the schema exactly |
-| `401 Unauthorized` | Make sure your `Authorization` header starts with `Bearer ` (with a space) |
-| Swagger UI not loading | Confirm uvicorn is still running in the terminal |
-
----
-
-## When Firebase Is Configured
-
-Once you have a real `serviceAccountKey.json`, update `backend/.env`:
-
-```env
-FIREBASE_SERVICE_ACCOUNT=serviceAccountKey.json
-DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
-```
-
-Then replace the stub responses in `routers/auth.py` and `routers/tasks.py`
-with real Firestore calls using the shared `db` client from `core/firebase.py`.
+| `address already in use` on port 8000 | Something else is already listening. `netstat -ano \| findstr :8000` (Windows) to find it, or run on a different port: `uvicorn app.main:app --reload --port 8001`. |
+| `ModuleNotFoundError` on startup | venv not activated, or `pip install -r requirements.txt` wasn't run after a `requirements.txt` update. |
+| `FileNotFoundError: Service account key not found` | `.env`'s `FIREBASE_SERVICE_ACCOUNT` doesn't resolve to a real file — see root README. |
+| `500 FIREBASE_WEB_API_KEY (or FIREBASE_API_KEY) not set` | Add `FIREBASE_API_KEY` to `.env` (used for the REST sign-in call `/auth/login` makes). |
+| `401 Unauthorized` on every protected route | Missing/expired/malformed `Authorization: Bearer <token>` header — get a fresh real token (Step 3), tokens expire after an hour. |
+| `422 Unprocessable Entity` | Request body doesn't match the schema — check required fields and enum values (e.g. `role` only accepts `employee`/`manager`). |
+| CORS error in a browser console, not Swagger UI | Swagger UI is served *from* the backend so it's same-origin and unaffected; a real Flutter web build is cross-origin — see the CORS note in the root README. |
+| Swagger UI won't load | Confirm uvicorn is still running and you're on the right port. |

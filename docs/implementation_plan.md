@@ -2,6 +2,8 @@
 
 This document outlines the master implementation plan to complete **Phases 3, 4, and 5** of the TaskFlow mobile app frontend, integrating it with Firebase, Hive (for offline caching), and the FastAPI backend.
 
+> **Status: Completed** — this document is kept as a historical record of what was planned and why. Every item in the "Proposed Changes" section below was implemented (the clean-architecture screen paths, `TaskModel`'s `@JsonKey` mapping, the Hive offline queue, the theme bloc, FCM setup). What this plan didn't anticipate: the backend that shipped alongside this frontend work had a completely different, incompatible route set from what the client called (`/auth/me`, `/auth/logout` didn't exist on the deployed backend), several env-var naming mismatches, and no CORS — meaning the integration this plan describes didn't actually work end-to-end until a separate remediation pass fixed it on 2026-07-22. See `docs/AUDIT.md` for that full history and `bugs_found.md` for the itemized bug list. If you're using this document to understand *why* the code looks the way it does, it's accurate; if you're trying to understand *whether it currently works*, read the audit instead.
+
 ---
 
 ## User Review Required & Misalignment Identification

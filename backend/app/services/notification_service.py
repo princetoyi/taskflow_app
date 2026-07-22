@@ -13,11 +13,17 @@ def get_db():
     return firestore.client()
 
 
-def send_push_notification(fcm_token: str, title: str, body: str) -> bool:
-    # Send a push notification to a single device via FCM
+def send_push_notification(
+    fcm_token: str, title: str, body: str, data: dict[str, str] | None = None
+) -> bool:
+    # Send a push notification to a single device via FCM.
+    # `data` is what the Flutter app's onNotificationTap handler reads to
+    # deep-link into the relevant screen — FCM data payloads must be
+    # string-to-string, unlike the notification title/body.
     try:
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
+            data=data or {},
             token=fcm_token,
         )
         messaging.send(message)
@@ -27,14 +33,16 @@ def send_push_notification(fcm_token: str, title: str, body: str) -> bool:
         return False
 
 
-def save_notification(uid: str, task_id: str, message: str, type: str) -> None:
-    # Write a notification record to Firestore
-    # Fields: user_id, task_id, message, type, is_read, created_at
+def save_notification(uid: str, task_id: str, title: str, description: str, type: str) -> None:
+    # Write a notification record to Firestore.
+    # Field names (title, description) match the Flutter NotificationModel
+    # schema, not the FCM push payload's (title, body) naming.
     db = get_db()
     db.collection(NOTIFICATIONS_COLLECTION).add({
         "user_id": uid,
         "task_id": task_id,
-        "message": message,
+        "title": title,
+        "description": description,
         "type": type,
         "is_read": False,
         "created_at": datetime.utcnow().isoformat(),
@@ -94,12 +102,18 @@ def send_deadline_reminders() -> None:
             title = "Task Deadline Reminder"
             body = f"'{data.get('title')}' is due in {int(hours_left)} hour(s)."
 
-            sent = send_push_notification(fcm_token, title, body)
+            sent = send_push_notification(
+                fcm_token,
+                title,
+                body,
+                data={"task_id": task.id, "deepLink": f"/tasks/{task.id}"},
+            )
 
             if sent:
                 save_notification(
                     uid=uid,
                     task_id=task.id,
-                    message=body,
-                    type="deadline_reminder"
+                    title=title,
+                    description=body,
+                    type="deadlineReminder"
                 )

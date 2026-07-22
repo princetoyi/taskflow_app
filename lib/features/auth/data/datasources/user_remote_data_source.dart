@@ -134,10 +134,18 @@ class UserRemoteDataSource {
   Future<UserModel> updateProfile(UserModel user) async {
     try {
       LoggerService.debug('Updating user profile: ${user.email}');
-      
+
+      // The backend's self-service update endpoint expects snake_case keys
+      // and only accepts these four fields — role/isActive intentionally
+      // aren't here, since only an admin-scoped request can change those.
       final response = await apiClient.patch<dynamic>(
         '/users/profile',
-        data: user.toJson(),
+        data: {
+          if (user.displayName != null) 'display_name': user.displayName,
+          if (user.firstName != null) 'first_name': user.firstName,
+          if (user.lastName != null) 'last_name': user.lastName,
+          if (user.phoneNumber != null) 'phone_number': user.phoneNumber,
+        },
       );
 
       if (response == null) {
@@ -170,10 +178,19 @@ class UserRemoteDataSource {
   Future<UserModel> updateUser(String userId, UserModel user) async {
     try {
       LoggerService.debug('Updating user: $userId');
-      
+
+      // Admin-scoped update — snake_case keys, matches UserAdminUpdateRequest
+      // on the backend. role/is_active are only settable through this path.
       final response = await apiClient.patch<dynamic>(
         '/users/$userId',
-        data: user.toJson(),
+        data: {
+          if (user.displayName != null) 'display_name': user.displayName,
+          if (user.firstName != null) 'first_name': user.firstName,
+          if (user.lastName != null) 'last_name': user.lastName,
+          if (user.phoneNumber != null) 'phone_number': user.phoneNumber,
+          if (user.role != null) 'role': user.role!.name,
+          'is_active': user.isActive,
+        },
       );
 
       if (response == null) {

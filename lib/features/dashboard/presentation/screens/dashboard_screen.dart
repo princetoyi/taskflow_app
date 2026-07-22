@@ -304,7 +304,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'Team Members',
           Icons.people_outline,
           Colors.blue,
-          () => context.push(AppRoutes.team),
+          () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team management coming soon'))),
         ),
         _buildActionCard(
           context,

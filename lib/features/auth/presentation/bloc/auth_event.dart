@@ -21,15 +21,19 @@ class SignupRequested extends AuthEvent {
   final String name;
   final String email;
   final String password;
+  // "employee" or "manager" — "admin" is deliberately not a self-signup
+  // choice; the backend rejects it too if a client ever sent it anyway.
+  final String role;
 
   const SignupRequested({
     required this.name,
     required this.email,
     required this.password,
+    this.role = 'employee',
   });
 
   @override
-  List<Object?> get props => [name, email, password];
+  List<Object?> get props => [name, email, password, role];
 }
 
 class LogoutRequested extends AuthEvent {}

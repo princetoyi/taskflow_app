@@ -6,6 +6,8 @@ import '../bloc/theme_event.dart';
 import '../bloc/theme_state.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -53,10 +55,60 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () => context.go(AppRoutes.notifications),
                 ),
               ),
+              const SizedBox(height: 24),
+              const Text('Account', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              const SizedBox(height: 12),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: const Text('View profile'),
+                      subtitle: const Text('Edit your name, phone number, and password.'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.profile),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      title: const Text('Log out', style: TextStyle(color: Colors.red)),
+                      onTap: () => _confirmLogout(context),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    final authBloc = context.read<AuthBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Log out'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                authBloc.add(LogoutRequested());
+              },
+              child: const Text('Log out'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

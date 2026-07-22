@@ -4,6 +4,7 @@
 # Following NexMotion Junior Developer Handbook v2.0.0
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from app.routes import auth, tasks, users, notifications
@@ -41,6 +42,21 @@ app = FastAPI(
     description="Backend API for the TaskFlow task management application — NexMotion Technologies",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# CORS — required for the Flutter web build; native (Android/iOS) isn't
+# subject to browser CORS at all, but web is, and without this every
+# cross-origin request fails as an opaque "connection error" with no detail
+# in the browser console (this is a browser security behavior, not a bug
+# Dio/FastAPI can surface more clearly).
+# `flutter run -d chrome` picks a random port per run, hence the regex
+# instead of a fixed allowlist — tighten this before deploying to production.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://localhost:\d+",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register route layers — thin routers that delegate to services

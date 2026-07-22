@@ -14,6 +14,7 @@ import '../../features/auth/data/services/auth_service.dart';
 import '../../features/auth/data/datasources/user_remote_data_source.dart';
 import '../../features/auth/data/repositories/user_repository.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/profile/presentation/bloc/profile_bloc.dart';
 import '../../features/settings/presentation/bloc/theme_bloc.dart';
 import '../../features/tasks/data/datasources/task_remote_data_source.dart';
 import '../../features/tasks/data/local/task_local_datasource.dart';
@@ -153,6 +154,10 @@ class InjectionContainer {
 
     locator.registerLazySingleton<TaskBloc>(
       () => TaskBloc(locator<TaskRepository>()),
+    );
+
+    locator.registerLazySingleton<ProfileBloc>(
+      () => ProfileBloc(userRepository: locator<UserRepository>()),
     );
   }
 }

@@ -61,6 +61,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         name: event.name,
         email: event.email,
         password: event.password,
+        role: event.role,
       );
       emit(Authenticated(user));
       // Register FCM token after successful signup

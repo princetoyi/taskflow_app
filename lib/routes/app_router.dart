@@ -7,12 +7,11 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/signup_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
-import '../features/tasks/presentation/screens/alerts_screen.dart';
 import '../features/tasks/presentation/screens/task_list_screen.dart';
 import '../features/tasks/presentation/screens/task_form_screen.dart';
 import '../features/tasks/presentation/screens/task_detail_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
-import '../features/team/presentation/screens/team_screen.dart';
+import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/tasks/domain/entities/task.dart';
 import 'app_routes.dart';
 
@@ -73,10 +72,6 @@ class AppRouter {
         builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
-        path: AppRoutes.alerts,
-        builder: (context, state) => const AlertsScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.taskCreate,
         builder: (context, state) {
           final task = state.extra as Task?;
@@ -96,8 +91,8 @@ class AppRouter {
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
-        path: AppRoutes.team,
-        builder: (context, state) => const TeamScreen(),
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfileScreen(),
       ),
     ],
   );
@@ -112,17 +107,6 @@ class AppRouter {
 
     if (isAuthenticated && isLoginOrSignup) {
       return AppRoutes.dashboard;
-    }
-
-    // Role-based access control
-    if (isAuthenticated && authBloc.state is Authenticated) {
-      final user = (authBloc.state as Authenticated).user;
-      final path = state.matchedLocation;
-      
-      // Employees cannot access manager-only routes
-      if (!user.isManager && (path == AppRoutes.team || path.startsWith('/team'))) {
-        return AppRoutes.dashboard;
-      }
     }
 
     return null;

@@ -10,7 +10,7 @@ from app.middleware.auth_middleware import get_current_user
 router = APIRouter()
 
 
-@router.post("/", response_model=TaskResponse)
+@router.post("", response_model=TaskResponse)
 async def create_task(
     data: TaskCreate,
     user: dict = Depends(get_current_user)
@@ -18,7 +18,7 @@ async def create_task(
     return await task_service.create_task(uid=user["uid"], data=data)
 
 
-@router.get("/", response_model=list[TaskResponse])
+@router.get("", response_model=list[TaskResponse])
 async def get_tasks(
     status: str | None = Query(None, description="Filter: pending or completed"),
     priority: str | None = Query(None, description="Filter: low, medium, high"),

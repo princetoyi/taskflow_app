@@ -8,6 +8,7 @@ enum NotificationType {
   overdueAlert,
   morningReminder,
   eveningCheckIn,
+  deadlineReminder,
 }
 
 /// Notification model for data layer
@@ -64,8 +65,8 @@ class NotificationModel extends Equatable {
     return NotificationModel(
       id: json['id'] as String,
       userId: json['userId'] as String? ?? json['user_id'] as String? ?? '',
-      title: json['title'] as String,
-      description: json['description'] as String,
+      title: json['title'] as String? ?? 'Notification',
+      description: json['description'] as String? ?? '',
       type: _parseNotificationType(
         json['type'] as String? ?? json['notification_type'] as String?,
       ),
@@ -124,6 +125,8 @@ class NotificationModel extends Equatable {
         return 'Morning Reminder';
       case NotificationType.eveningCheckIn:
         return 'Evening Check-In';
+      case NotificationType.deadlineReminder:
+        return 'Deadline Reminder';
     }
   }
 
@@ -144,6 +147,8 @@ class NotificationModel extends Equatable {
         return '#F3F4F6'; // Gray background
       case NotificationType.eveningCheckIn:
         return '#EFF6FF'; // Blue background
+      case NotificationType.deadlineReminder:
+        return '#FFF2F2'; // Red background
     }
   }
 
@@ -164,6 +169,8 @@ class NotificationModel extends Equatable {
         return '#6B7280'; // Gray text
       case NotificationType.eveningCheckIn:
         return '#2563EB'; // Blue text
+      case NotificationType.deadlineReminder:
+        return '#DC2626'; // Red text
     }
   }
 

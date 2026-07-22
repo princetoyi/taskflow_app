@@ -22,6 +22,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  String _selectedRole = 'employee';
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
@@ -29,6 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
             name: _nameController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
+            role: _selectedRole,
           ));
     }
   }
@@ -109,6 +111,22 @@ class _SignupScreenState extends State<SignupScreen> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 20),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('I am signing up as a...', style: Theme.of(context).textTheme.bodyMedium),
+                          ),
+                          const SizedBox(height: 8),
+                          SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(value: 'employee', label: Text('Employee'), icon: Icon(Icons.person_outline)),
+                              ButtonSegment(value: 'manager', label: Text('Manager'), icon: Icon(Icons.supervisor_account_outlined)),
+                            ],
+                            selected: {_selectedRole},
+                            onSelectionChanged: isLoading
+                                ? null
+                                : (selection) => setState(() => _selectedRole = selection.first),
                           ),
                           const SizedBox(height: 32),
                           PrimaryButton(

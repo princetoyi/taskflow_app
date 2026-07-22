@@ -1,165 +1,114 @@
-# TaskFlow - Flutter Authentication App
+# TaskFlow — Flutter App (Technical Reference)
 
-A production-ready Flutter application implementing complete authentication with Firebase and FastAPI backend.
-
-## Features
-
-- **Firebase Authentication**: Email/password signup and login
-- **JWT Token Management**: Secure token storage and API authentication
-- **Clean Architecture**: Feature-first architecture with BLoC pattern
-- **Route Protection**: Automatic redirects based on authentication state
-- **Error Handling**: Comprehensive error handling and user feedback
-- **Secure Storage**: JWT tokens stored securely using flutter_secure_storage
+Deep-dive reference for the Flutter side of TaskFlow. For setup instructions, see the root [`README.md`](README.md) — this file covers architecture, state management, and how each feature is actually wired to the backend.
 
 ## Tech Stack
 
-- **Frontend**: Flutter, BLoC, Go Router, Dio
-- **Backend**: FastAPI (assumed running on http://10.0.2.2:8000)
-- **Authentication**: Firebase Auth + JWT
-- **Storage**: Flutter Secure Storage
+- **Frontend**: Flutter, `flutter_bloc` (BLoC pattern), `go_router`, Dio
+- **Backend**: FastAPI, running at whatever `BASE_URL*` is set in `.env` (see root README)
+- **Authentication**: Firebase Auth (client SDK) — the backend never issues its own JWT; it verifies the Firebase ID token directly
+- **Storage**: `flutter_secure_storage` (auth token), Hive (task cache + offline sync queue)
 
-## Setup Instructions
+## Setup
 
-### 1. Prerequisites
-
-- Flutter SDK (>=3.0.0)
-- Firebase project
-- Android Studio / Xcode for mobile development
-
-### 2. Clone and Install Dependencies
+See the root [`README.md`](README.md) for the full setup flow (Firebase project, `.env`, `flutterfire configure`, running on each platform). Summary:
 
 ```bash
-git clone <repository-url>
-cd taskflow_app
 flutter pub get
+flutterfire configure   # generates lib/firebase_options.dart, gitignored
+flutter run -d chrome    # or -d android / -d ios
 ```
 
-### 3. Firebase Setup
-
-1. Create a Firebase project at https://console.firebase.google.com/
-2. Enable Authentication with Email/Password provider
-3. Generate Firebase configuration:
-
-```bash
-flutterfire configure
-```
-
-This will generate `firebase_options.dart` and update your Firebase configuration.
-
-### 4. Environment Configuration
-
-Update the `.env` file with your backend URL:
-
-```
-BASE_URL=http://10.0.2.2:8000
-```
-
-### 5. Backend Setup
-
-Ensure your FastAPI backend is running and exposes these endpoints:
-
-- `POST /auth/signup` - User registration
-- `POST /auth/login` - User login
-- `POST /auth/verify-token` - Token verification
-- `POST /auth/logout` - User logout
-
-### 6. Run the Application
-
-```bash
-flutter run
-```
-
-### 7. Web Support
-
-To enable and run the web version of the app:
-
-```bash
-flutter config --enable-web
-flutter pub get
-flutter run -d chrome --web-renderer html
-```
-
-If you need to use Edge for web debugging, use:
-
-```bash
-flutter run -d edge --web-renderer html
-```
-
-## Troubleshooting
-
-- Run `flutter clean` and `flutter pub get` if the build cache is corrupted.
-- If web devices do not appear, run `flutter config --enable-web` and then `flutter devices`.
-- If the Flutter SDK is out of date, update using `flutter upgrade`.
-- For Edge rendering issues, use `--web-renderer html`.
+The backend (`backend/app/main.py`) must already be running — the app has no offline-first "works with no backend at all" mode; it needs at least the initial connection to authenticate.
 
 ## Architecture Overview
 
 ```
 lib/
-├── core/                          # Core functionality
-│   ├── constants/                 # App constants
-│   ├── errors/                    # Custom exceptions
-│   ├── network/                   # API and interceptors
-│   ├── services/                  # Storage, connectivity, logging
-│   ├── theme/                     # App theming
-│   ├── utils/                     # Validators, helpers
-│   └── dependency_injection/      # Service locator setup
+├── core/
+│   ├── constants/                 # App-wide constants, colors, theme
+│   ├── dependency_injection/      # GetIt service locator — injection_container.dart
+│   ├── errors/                    # AppException
+│   ├── local/                    # Hive-backed offline sync queue datasource
+│   ├── models/                    # Sync queue item (Hive)
+│   ├── network/                   # ApiService (Dio config), ApiClient (wrapper),
+│   │                              # interceptors: auth, retry, error, response-cache
+│   ├── services/                  # Connectivity, notifications (FCM + local),
+│   │                              # storage (secure storage), sync service, logging
+│   └── widgets/                   # Shared widgets (bottom nav, stat cards, etc.)
 ├── features/
-│   └── auth/                      # Authentication feature
-│       ├── data/                  # Data layer
-│       │   ├── models/            # Data models
-│       │   ├── repositories/      # Repository implementations
-│       │   └── services/          # External service integrations
-│       ├── domain/                # Domain entities
-│       └── presentation/          # Presentation layer
-│           ├── bloc/              # BLoC pattern implementation
-│           ├── screens/           # UI screens
-│           └── widgets/           # Reusable widgets
-├── routes/                        # App routing
-├── firebase_options.dart          # Firebase configuration
-└── main.dart                      # App entry point
+│   ├── auth/
+│   │   ├── data/                  # AuthService (Firebase SDK wrapper), AuthRepository,
+│   │   │                          # UserRepository + UserRemoteDataSource (profile/admin API)
+│   │   ├── domain/entities/       # AuthUser (role: employee/manager/admin)
+│   │   ├── models/                # UserModel (richer profile model, used by UserRepository)
+│   │   └── presentation/          # AuthBloc, login/signup screens
+│   ├── tasks/
+│   │   ├── data/                  # TaskModel (JSON↔Firestore field mapping), remote +
+│   │   │                          # local (Hive) datasources, TaskRepositoryImpl
+│   │   ├── domain/                # Task entity, TaskRepository interface
+│   │   └── presentation/          # TaskBloc, task list/detail/form screens
+│   ├── dashboard/presentation/    # Dashboard screen (live stats from TaskBloc)
+│   ├── notifications/             # NotificationBloc, notification list screen
+│   ├── settings/                  # ThemeBloc (persisted via /users/preferences), settings screen
+│   └── profile/                   # ProfileBloc, profile screen (view/edit + change password)
+├── routes/                        # go_router config: app_routes.dart (paths),
+│                                   # app_router.dart (routes + auth-based redirect)
+├── firebase_options.dart          # Generated by flutterfire configure, gitignored
+└── main.dart                      # DI init, Hive init, BLoC providers, router
 ```
+
+> `lib/services/` (a separate `api_client.dart`, `token_service.dart` outside `core/network/`) is dead code from an earlier merge — nothing references it except itself. `lib/services/firebase_service.dart` is the one live file there (used by `main.dart` for Firebase init). Safe to ignore; a cleanup candidate.
 
 ## Authentication Flow
 
-1. **Signup/Login**: User authenticates with Firebase
-2. **Token Exchange**: Firebase ID token sent to backend
-3. **JWT Storage**: Backend returns JWT, stored securely
-4. **API Requests**: JWT automatically attached to requests
-5. **Session Management**: Automatic logout on token expiry
+The actual signup/login flow is **client-side Firebase Auth**, not a custom backend JWT:
+
+1. **Signup**: `SignupScreen` collects name/email/password **and a role choice** (Employee or Manager — Admin is not self-selectable). `AuthBloc` dispatches to `AuthRepository.signup()`, which:
+   - Calls `AuthService.signUpWithEmailAndPassword()` — this hits the Firebase Auth **client SDK** directly, not any backend route.
+   - Gets a real Firebase ID token (`getFirebaseIdToken()`) and stores it via `StorageService` (secure storage).
+   - Calls `POST /auth/complete-signup` with `{role}` — this is the actual moment the Firestore user profile gets created, with the chosen role. (The backend also has a `POST /auth/signup` REST endpoint that creates a Firebase Auth user server-side, but the Flutter app never calls it — it's unused by the live app, kept for API completeness/Postman testing.)
+2. **Login**: same shape — Firebase client SDK sign-in, store the ID token, then `GET /auth/me` to fetch the profile (self-healing it into existence if it somehow doesn't exist yet, e.g. a user created before this profile system existed).
+3. **Every subsequent request**: `AuthInterceptor` (in `core/network/`) attaches the stored Firebase ID token as `Authorization: Bearer <token>` to every Dio request. The backend verifies it with `firebase_admin.auth.verify_id_token()` on every protected route — there's no separate app-issued JWT anywhere in this flow.
+4. **App restart**: `CheckAuthStatus` → `AuthRepository.checkAuthStatus()` reads the stored token, and if present, hits `GET /auth/me` again to confirm it's still valid and re-fetch the role; failure here logs the user out and clears storage.
+5. **Logout**: `Settings` screen → confirm dialog → `LogoutRequested` → `AuthBloc` → `AuthRepository.logout()` → `POST /auth/logout` (a no-op on the backend; Firebase ID tokens are stateless) → `AuthService.signOut()` (clears the Firebase SDK session) → clears secure storage. The router's redirect logic (driven by `AuthBloc.stream`) automatically bounces the user to `/login` once the state becomes `Unauthenticated`.
 
 ## Key Components
 
-- **AuthBloc**: Manages authentication state
-- **AuthRepository**: Handles business logic and data flow
-- **AuthService**: Firebase authentication wrapper
-- **ApiService**: HTTP client with interceptors
-- **StorageService**: Secure token storage
-- **AppRouter**: Route protection and navigation
+- **AuthBloc** — auth state machine (`AuthInitial`/`AuthLoading`/`Authenticated`/`Unauthenticated`/`AuthError`)
+- **AuthRepository** — the actual signup/login/logout/session-check logic (see above)
+- **TaskBloc** — task CRUD against the backend, with optimistic updates and Hive-backed offline queueing (`SyncService` replays queued mutations when connectivity returns)
+- **NotificationBloc** — loads/refreshes the notification list, marks as read
+- **ThemeBloc** — light/dark toggle, persisted server-side via `/users/preferences`
+- **ProfileBloc** — loads the profile, handles edit-and-save and change-password as distinct actions without ever blanking the form on error (see `profile_state.dart` for how it carries the last-known-good profile through error/success states)
+- **ApiService / ApiClient** — Dio wrapper with the interceptor chain (cache → retry → auth → error-mapping → logging)
+- **AppRouter** — `go_router` config; redirect logic sends unauthenticated users to `/login` and authenticated users away from `/login`/`/signup`
 
-## Security Features
+## Backend Endpoint Reference
 
-- JWT tokens stored in encrypted storage
-- Automatic token refresh handling
-- Secure API request interception
-- Route guards for protected pages
-- Comprehensive error handling
+All are on `backend/app/` (see root README's structure note about there being only one backend tree now). Full live list (confirm with `GET /openapi.json` against a running server):
 
-## Development Notes
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/auth/signup` | Server-side account creation (unused by the app — see Authentication Flow above) |
+| POST | `/auth/login` | Server-side REST sign-in (also unused by the app directly) |
+| GET | `/auth/me` | Fetch/self-heal the caller's Firestore profile |
+| POST | `/auth/complete-signup` | Create the Firestore profile with a chosen role — the real signup completion step |
+| POST | `/auth/logout` | No-op acknowledgement |
+| GET / POST | `/tasks` | List / create tasks |
+| GET / PUT / DELETE | `/tasks/{task_id}` | Read / update / delete a task |
+| GET / PUT | `/users/preferences` | Theme preference |
+| GET / PATCH | `/users/profile` | Self-service profile view/edit (role and is_active are not editable here) |
+| POST | `/users/profile/change-password` | Re-verifies current password before applying the new one |
+| POST | `/users/profile/image` | Profile photo upload — implemented, but Cloud Storage isn't provisioned yet (see root README's Known Limitations) |
+| GET | `/users` | List all users, admin-only |
+| GET / PATCH / DELETE | `/users/{user_id}` | Admin-only profile view/edit (role, is_active included)/delete |
+| GET | `/notifications` | List the caller's notifications |
+| PUT | `/notifications/{id}/read` | Mark one as read |
+| POST | `/notifications/fcm-token` | Register/refresh the device's FCM token, called on every login |
 
-- Uses null safety throughout
-- Follows SOLID principles
-- Implements clean architecture
-- Production-ready error handling
-- Responsive UI design
+## Notes for Contributors
 
-## Backend Integration
-
-The app expects a FastAPI backend with JWT authentication. The backend should:
-
-1. Verify Firebase ID tokens
-2. Issue application JWT tokens
-3. Validate JWT tokens on protected routes
-4. Handle user registration/login
-
-See the backend folder for API specifications.
+- Every route path is registered **without** a trailing slash (`@router.get("")`, not `@router.get("/")`). This matters more than it looks: a trailing-slash mismatch causes FastAPI to issue a 307 redirect, which browsers can silently fail to follow correctly on a credentialed CORS request — this was a real, previously-shipped bug (see `docs/AUDIT.md`). Keep new routes consistent with this.
+- Field names crossing the Dart/Python boundary are **snake_case** (`display_name`, `owner_uid`, `is_active`, etc.) to match Firestore and the Pydantic models — Dart models generally accept both cases on read (`json['displayName'] ?? json['display_name']`) but only send snake_case on write. Don't rely on `UserModel.toJson()` (camelCase) for any backend request body; build the snake_case payload explicitly, as `UserRemoteDataSource` does.
+- The BLoC pattern is used everywhere; screens don't call repositories directly except through a bloc's event handlers. If you add a new mutating action from a screen, add a bloc event for it rather than calling the repository inline.

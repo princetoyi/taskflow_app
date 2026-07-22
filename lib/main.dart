@@ -20,6 +20,7 @@ import 'features/tasks/presentation/bloc/task_bloc.dart';
 import 'features/tasks/presentation/bloc/task_event.dart';
 import 'features/tasks/domain/repositories/task_repository.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
+import 'features/profile/presentation/bloc/profile_bloc.dart';
 import 'features/tasks/data/models/task_hive_model.dart';
 import 'core/models/sync_queue_item.dart';
 import 'routes/app_router.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
   final notificationService = InjectionContainer.locator<NotificationService>();
   final localNotificationService = InjectionContainer.locator<LocalNotificationService>();
   final notificationBloc = InjectionContainer.locator<NotificationBloc>();
+  final profileBloc = InjectionContainer.locator<ProfileBloc>();
 
   final appRouter = AppRouter(authBloc: authBloc);
   final router = appRouter.router;
@@ -87,6 +89,7 @@ Future<void> main() async {
           BlocProvider.value(value: authBloc),
           BlocProvider.value(value: themeBloc),
           BlocProvider.value(value: notificationBloc),
+          BlocProvider.value(value: profileBloc),
           BlocProvider<TaskBloc>(
             create: (_) => TaskBloc(taskRepository)..add(const FetchTasksRequested()),
           ),
