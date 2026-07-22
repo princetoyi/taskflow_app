@@ -1,21 +1,22 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/errors/app_exception.dart';
-import '../../../../core/network/api_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../models/auth_user_model.dart';
 import '../services/auth_service.dart';
+import '../../domain/entities/auth_user.dart';
 
 class AuthRepository {
   final AuthService authService;
-  final ApiService apiService;
+  final ApiClient apiClient;
   final StorageService storageService;
   final ConnectivityService connectivityService;
 
   AuthRepository({
     required this.authService,
-    required this.apiService,
+    required this.apiClient,
     required this.storageService,
     required this.connectivityService,
   });
@@ -33,19 +34,20 @@ class AuthRepository {
         email: email,
         password: password,
       );
+
       final idToken = await authService.getFirebaseIdToken();
-      final response = await apiService.client.post(
-        '/auth/login',
-        data: {'firebase_token': idToken},
+      await storageService.saveToken(idToken);
+
+      // Fetch user profile from backend to get role
+      final profileData = await apiClient.get<Map<String, dynamic>>('/auth/me');
+      
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName ?? '',
+        role: _parseRole(profileData['role']),
+        isActive: profileData['is_active'] ?? true,
       );
-
-      final accessToken = response.data['access_token']?.toString();
-      if (accessToken == null || accessToken.isEmpty) {
-        throw AppException('Authentication token is missing from response.');
-      }
-
-      await storageService.saveToken(accessToken);
-      return AuthUserModel.fromFirebaseUser(user);
     } on DioException catch (e) {
       final message = _extractDioMessage(e);
       throw AppException(message);
@@ -72,23 +74,20 @@ class AuthRepository {
         email: email,
         password: password,
       );
+
       final idToken = await authService.getFirebaseIdToken();
-      final response = await apiService.client.post(
-        '/auth/signup',
-        data: {
-          'firebase_token': idToken,
-          'email': email,
-          'display_name': name,
-        },
+      await storageService.saveToken(idToken);
+
+      // Fetch user profile from backend to get role
+      final profileData = await apiClient.get<Map<String, dynamic>>('/auth/me');
+
+      return AuthUserModel(
+        uid: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName ?? name,
+        role: _parseRole(profileData['role']),
+        isActive: profileData['is_active'] ?? true,
       );
-
-      final accessToken = response.data['access_token']?.toString();
-      if (accessToken == null || accessToken.isEmpty) {
-        throw AppException('Authentication token is missing from response.');
-      }
-
-      await storageService.saveToken(accessToken);
-      return AuthUserModel.fromFirebaseUser(user);
     } on DioException catch (e) {
       final message = _extractDioMessage(e);
       throw AppException(message);
@@ -107,13 +106,20 @@ class AuthRepository {
     }
 
     try {
-      await apiService.client.post('/auth/verify-token');
+      final profileData = await apiClient.get<Map<String, dynamic>>('/auth/me');
       final firebaseUser = authService.getCurrentUser();
       if (firebaseUser == null) {
         await logout();
         return null;
       }
-      return AuthUserModel.fromFirebaseUser(firebaseUser);
+      
+      return AuthUserModel(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        displayName: firebaseUser.displayName ?? '',
+        role: _parseRole(profileData['role']),
+        isActive: profileData['is_active'] ?? true,
+      );
     } on DioException {
       await logout();
       return null;
@@ -128,7 +134,7 @@ class AuthRepository {
     final token = await storageService.getToken();
     try {
       if (token != null && token.isNotEmpty) {
-        await apiService.client.post('/auth/logout');
+        await apiClient.post('/auth/logout');
       }
     } catch (_) {
       // ignore backend logout errors and continue clearing local state
@@ -142,5 +148,20 @@ class AuthRepository {
       return (error.error as AppException).message;
     }
     return error.response?.data?['detail']?.toString() ?? error.message ?? 'An unexpected error occurred.';
+  }
+
+  UserRole _parseRole(dynamic roleValue) {
+    if (roleValue == null) return UserRole.employee;
+    
+    final roleStr = roleValue.toString().toLowerCase();
+    switch (roleStr) {
+      case 'manager':
+        return UserRole.manager;
+      case 'admin':
+        return UserRole.admin;
+      case 'employee':
+      default:
+        return UserRole.employee;
+    }
   }
 }

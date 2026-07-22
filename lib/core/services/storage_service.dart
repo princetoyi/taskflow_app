@@ -22,6 +22,22 @@ class StorageService {
     await _storage.delete(key: AppConstants.jwtTokenKey);
   }
 
+  Future<void> saveThemeMode(String mode) async {
+    await _storage.write(key: AppConstants.themeModeKey, value: mode);
+  }
+
+  Future<String?> getThemeMode() async {
+    return await _storage.read(key: AppConstants.themeModeKey);
+  }
+
+  Future<void> saveFcmToken(String token) async {
+    await _storage.write(key: AppConstants.fcmTokenKey, value: token);
+  }
+
+  Future<String?> getFcmToken() async {
+    return await _storage.read(key: AppConstants.fcmTokenKey);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

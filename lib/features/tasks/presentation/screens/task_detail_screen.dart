@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_colors.dart';
-import '../domain/entities/task.dart';
-import '../domain/entities/task_status.dart';
-import '../domain/repositories/task_repository.dart';
-import '../presentation/bloc/task_bloc.dart';
-import '../presentation/bloc/task_event.dart';
-import '../presentation/bloc/task_state.dart';
-import '../presentation/widgets/priority_badge.dart';
-import '../presentation/widgets/status_chip.dart';
-import '../../../routes/app_routes.dart';
+import 'package:taskflow_app/core/constants/app_colors.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task.dart';
+import 'package:taskflow_app/features/tasks/domain/entities/task_status.dart';
+import 'package:taskflow_app/features/tasks/domain/repositories/task_repository.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_bloc.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_event.dart';
+import 'package:taskflow_app/features/tasks/presentation/bloc/task_state.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/priority_badge.dart';
+import 'package:taskflow_app/features/tasks/presentation/widgets/status_chip.dart';
+import 'package:taskflow_app/routes/app_routes.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final String taskId;
@@ -178,7 +178,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         const SizedBox(height: 28),
         FilledButton.icon(
           onPressed: () {
-            context.read<TaskBloc>().add(ToggleTaskStatus(task));
+            context.read<TaskBloc>().add(UpdateTaskRequested(task: _toggleStatus(task)));
           },
           icon: Icon(
               task.status == TaskStatus.completed ? Icons.undo : Icons.check),
@@ -257,6 +257,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return null;
   }
 
+  Task _toggleStatus(Task task) {
+    final status = task.status == TaskStatus.completed ? TaskStatus.pending : TaskStatus.completed;
+    return Task(
+      id: task.id,
+      userId: task.userId,
+      title: task.title,
+      description: task.description,
+      status: status,
+      priority: task.priority,
+      deadline: task.deadline,
+      createdAt: task.createdAt,
+    );
+  }
+
   void _confirmDelete(BuildContext context) {
     showDialog<void>(
       context: context,
@@ -273,7 +287,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                context.read<TaskBloc>().add(DeleteTask(widget.taskId));
+                context.read<TaskBloc>().add(DeleteTaskRequested(widget.taskId));
                 context.pop();
               },
               child: const Text('Delete'),

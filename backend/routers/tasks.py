@@ -1,175 +1,206 @@
 """
 routers/tasks.py
 ----------------
-Router for /tasks endpoints using real Firestore reads/writes.
+Task management endpoints with Firestore integration.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import datetime
+from typing import Optional
 from core.security import verify_token
-from core.firebase import db
+from app.repositories import TaskRepository
+from app.models.task import TaskCreate, TaskUpdate, TaskResponse
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-
-# ── Request / Response schemas ────────────────────────────────────────────────
-
-class TaskCreateRequest(BaseModel):
-    title: str
-    description: str = ""
-    priority: Literal["low", "medium", "high"] = "medium"
-    deadline: str | None = None
-
-
-class TaskUpdateRequest(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    completed: bool | None = None
-    priority: Literal["low", "medium", "high"] | None = None
-    deadline: str | None = None
-
-
-class TaskResponse(BaseModel):
-    id: str
-    title: str
-    description: str
-    completed: bool
-    created_at: str
-    owner_uid: str
-    priority: Literal["low", "medium", "high"]
-    deadline: str | None = None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[TaskResponse], summary="Get all tasks for authenticated user")
 async def get_tasks(
-    status: str | None = Query(None, description="Filter: pending or completed"),
-    priority: str | None = Query(None, description="Filter: low, medium, high"),
-    sort_by: str = Query("created_at", description="Field to sort by"),
-    order: str = Query("asc", description="asc or desc"),
+    decoded_token: dict = Depends(verify_token),
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    order: str = Query("desc"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
-    decoded_token: dict = Depends(verify_token)
+    page_size: int = Query(20, ge=1, le=100),
 ):
+    """
+    Get all tasks for the authenticated user with optional filtering and sorting.
+    
+    Query Parameters:
+    - status: Filter by "completed" or "pending"
+    - priority: Filter by "low", "medium", or "high"
+    - sort_by: Sort by "created_at", "deadline", or "title"
+    - order: Sort order "asc" or "desc"
+    - page: Page number (1-indexed)
+    - page_size: Items per page
+    """
     uid = decoded_token.get("uid")
-
-    if db is None:
-        raise HTTPException(status_code=503, detail="Firestore not initialised.")
-
-    query = db.collection("tasks").where("owner_uid", "==", uid)
-    docs = query.stream()
-
-    tasks = []
-    for doc in docs:
-        data = doc.to_dict()
-        data["id"] = doc.id
-        tasks.append(TaskResponse(**data))
-
-    # Apply filters
-    if status == "completed":
-        tasks = [t for t in tasks if t.completed]
-    elif status == "pending":
-        tasks = [t for t in tasks if not t.completed]
-
-    if priority:
-        tasks = [t for t in tasks if t.priority == priority]
-
-    # Sort
-    reverse = order.lower() == "desc"
-    tasks.sort(key=lambda t: getattr(t, sort_by, "") or "", reverse=reverse)
-
-    # Paginate
-    start = (page - 1) * page_size
-    return tasks[start:start + page_size]
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        tasks = TaskRepository.get_user_tasks(
+            owner_uid=uid,
+            status=status,
+            priority=priority,
+            sort_by=sort_by,
+            order=order,
+            page=page,
+            page_size=page_size,
+        )
+        
+        # Convert to response format
+        return [
+            TaskResponse(
+                id=task["id"],
+                owner_uid=task["owner_uid"],
+                title=task["title"],
+                description=task.get("description"),
+                completed=task.get("completed", False),
+                priority=task.get("priority", "medium"),
+                deadline=task.get("deadline"),
+                created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+            )
+            for task in tasks
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/", response_model=TaskResponse, status_code=201, summary="Create a new task")
-async def create_task(body: TaskCreateRequest, decoded_token: dict = Depends(verify_token)):
+async def create_task(body: TaskCreate, decoded_token: dict = Depends(verify_token)):
+    """Create a new task for the authenticated user."""
     uid = decoded_token.get("uid")
-
-    if db is None:
-        raise HTTPException(status_code=503, detail="Firestore not initialised.")
-
-    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    task_data = {
-        "title": body.title,
-        "description": body.description,
-        "completed": False,
-        "created_at": now,
-        "owner_uid": uid,
-        "priority": body.priority,
-        "deadline": body.deadline,
-    }
-
-    doc_ref = db.collection("tasks").document()
-    doc_ref.set(task_data)
-
-    return TaskResponse(id=doc_ref.id, **task_data)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        task = TaskRepository.create_task(
+            owner_uid=uid,
+            title=body.title,
+            description=body.description,
+            priority=body.priority,
+            deadline=body.deadline.isoformat() if body.deadline else None,
+        )
+        
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{task_id}", response_model=TaskResponse, summary="Get a single task by ID")
 async def get_task(task_id: str, decoded_token: dict = Depends(verify_token)):
+    """Get a single task by ID."""
     uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        task = TaskRepository.get_task(task_id, uid)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+        
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    if db is None:
-        raise HTTPException(status_code=503, detail="Firestore not initialised.")
 
-    doc = db.collection("tasks").document(task_id).get()
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-
-    data = doc.to_dict()
-    if data.get("owner_uid") != uid:
-        raise HTTPException(status_code=403, detail="Not authorised to access this task.")
-
-    data["id"] = doc.id
-    return TaskResponse(**data)
-
-
-@router.put("/{task_id}", response_model=TaskResponse, summary="Update a task")
-async def update_task(task_id: str, body: TaskUpdateRequest, decoded_token: dict = Depends(verify_token)):
+@router.patch("/{task_id}", response_model=TaskResponse, summary="Update a task")
+async def update_task(task_id: str, body: TaskUpdate, decoded_token: dict = Depends(verify_token)):
+    """Update a task."""
     uid = decoded_token.get("uid")
-
-    if db is None:
-        raise HTTPException(status_code=503, detail="Firestore not initialised.")
-
-    doc_ref = db.collection("tasks").document(task_id)
-    doc = doc_ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-
-    data = doc.to_dict()
-    if data.get("owner_uid") != uid:
-        raise HTTPException(status_code=403, detail="Not authorised to update this task.")
-
-    updates = body.model_dump(exclude_unset=True)
-    doc_ref.update(updates)
-
-    data.update(updates)
-    data["id"] = task_id
-    return TaskResponse(**data)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        updates = {}
+        
+        if body.title is not None:
+            updates["title"] = body.title
+        if body.description is not None:
+            updates["description"] = body.description
+        if body.completed is not None:
+            updates["completed"] = body.completed
+        if body.priority is not None:
+            updates["priority"] = body.priority
+        if body.deadline is not None:
+            updates["deadline"] = body.deadline.isoformat()
+        
+        task = TaskRepository.update_task(task_id, uid, **updates)
+        
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+        
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{task_id}", status_code=204, summary="Delete a task")
 async def delete_task(task_id: str, decoded_token: dict = Depends(verify_token)):
+    """Delete a task."""
     uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        success = TaskRepository.delete_task(task_id, uid)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    if db is None:
-        raise HTTPException(status_code=503, detail="Firestore not initialised.")
 
-    doc_ref = db.collection("tasks").document(task_id)
-    doc = doc_ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-
-    data = doc.to_dict()
-    if data.get("owner_uid") != uid:
-        raise HTTPException(status_code=403, detail="Not authorised to delete this task.")
-
-    doc_ref.delete()
-    return None
+@router.get("/{user_id}/statistics", summary="Get task statistics for a user")
+async def get_task_statistics(user_id: str, decoded_token: dict = Depends(verify_token)):
+    """Get task statistics (completed, pending, overdue, high priority count)."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Only allow users to get their own stats
+    if uid != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    try:
+        stats = TaskRepository.get_task_statistics(uid)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import '../../../../core/errors/app_exception.dart';
-import '../../../../core/network/api_service.dart';
+import '../../../../core/network/api_client.dart';
 import '../models/task_model.dart';
 
 class TaskRemoteDataSource {
-  final ApiService apiService;
+  final ApiClient apiClient;
 
-  TaskRemoteDataSource({required this.apiService});
+  TaskRemoteDataSource({required this.apiClient});
 
   Future<List<TaskModel>> fetchTasks({
     String? status,
@@ -17,7 +17,7 @@ class TaskRemoteDataSource {
     int pageSize = 20,
   }) async {
     try {
-      final response = await apiService.client.get(
+      final rawData = await apiClient.get<dynamic>(
         '/tasks',
         queryParameters: {
           if (status != null) 'status': status,
@@ -29,7 +29,6 @@ class TaskRemoteDataSource {
         },
       );
 
-      final rawData = response.data;
       final items = rawData is List
           ? rawData
           : rawData is Map<String, dynamic>
@@ -46,12 +45,12 @@ class TaskRemoteDataSource {
 
   Future<TaskModel> createTask(TaskModel task) async {
     try {
-      final response = await apiService.client.post(
+      final responseData = await apiClient.post<dynamic>(
         '/tasks',
-        data: task.toJson(),
+        data: task.toCreateJson(),
       );
 
-      return TaskModel.fromJson(Map<String, dynamic>.from(response.data));
+      return TaskModel.fromJson(Map<String, dynamic>.from(responseData));
     } on DioException catch (error) {
       throw _mapDioException(error);
     }
@@ -59,12 +58,12 @@ class TaskRemoteDataSource {
 
   Future<TaskModel> updateTask(TaskModel task) async {
     try {
-      final response = await apiService.client.put(
+      final responseData = await apiClient.put<dynamic>(
         '/tasks/${task.id}',
-        data: task.toJson(),
+        data: task.toUpdateJson(),
       );
 
-      return TaskModel.fromJson(Map<String, dynamic>.from(response.data));
+      return TaskModel.fromJson(Map<String, dynamic>.from(responseData));
     } on DioException catch (error) {
       throw _mapDioException(error);
     }
@@ -72,7 +71,7 @@ class TaskRemoteDataSource {
 
   Future<void> deleteTask(String taskId) async {
     try {
-      await apiService.client.delete('/tasks/$taskId');
+      await apiClient.delete<dynamic>('/tasks/$taskId');
     } on DioException catch (error) {
       throw _mapDioException(error);
     }
@@ -80,8 +79,8 @@ class TaskRemoteDataSource {
 
   Future<TaskModel> fetchTaskById(String taskId) async {
     try {
-      final response = await apiService.client.get('/tasks/$taskId');
-      return TaskModel.fromJson(Map<String, dynamic>.from(response.data));
+      final responseData = await apiClient.get<dynamic>('/tasks/$taskId');
+      return TaskModel.fromJson(Map<String, dynamic>.from(responseData));
     } on DioException catch (error) {
       throw _mapDioException(error);
     }
