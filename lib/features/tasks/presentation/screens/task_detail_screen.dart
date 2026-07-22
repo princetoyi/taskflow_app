@@ -178,7 +178,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         const SizedBox(height: 28),
         FilledButton.icon(
           onPressed: () {
-            context.read<TaskBloc>().add(UpdateTask(_toggleStatus(task)));
+            context.read<TaskBloc>().add(UpdateTaskRequested(task: _toggleStatus(task)));
           },
           icon: Icon(
               task.status == TaskStatus.completed ? Icons.undo : Icons.check),
@@ -287,7 +287,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                context.read<TaskBloc>().add(DeleteTask(widget.taskId));
+                context.read<TaskBloc>().add(DeleteTaskRequested(widget.taskId));
                 context.pop();
               },
               child: const Text('Delete'),

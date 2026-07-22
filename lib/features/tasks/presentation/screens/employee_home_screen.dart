@@ -42,10 +42,12 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 final dueTodayCount = dueToday.length;
                 final overdueCount = overdue.length;
                 final totalOpen = openTasks.length;
+                final greeting = _greetingForNow();
+                final displayName = authState.user.displayName.isNotEmpty ? authState.user.displayName.split(' ').first : 'there';
 
                 return Column(
                   children: [
-                    _buildGreeting(context, authState.user.displayName, dueTodayCount, overdueCount, totalOpen),
+                    _buildGreeting(context, displayName, greeting, dueTodayCount, overdueCount, totalOpen),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                       child: Container(
@@ -109,8 +111,8 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     );
   }
 
-  Widget _buildGreeting(BuildContext context, String displayName, int dueTodayCount, int overdueCount, int totalOpen) {
-    final name = displayName.isEmpty ? 'Team member' : displayName.split(' ').first;
+  Widget _buildGreeting(BuildContext context, String displayName, String greeting, int dueTodayCount, int overdueCount, int totalOpen) {
+    final name = displayName.isEmpty ? 'Team member' : displayName;
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -120,9 +122,9 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Thursday · Feb 26', style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 0.12, fontWeight: FontWeight.w800)),
+          Text(DateTime.now().toLocal().toString().split(' ').first, style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 0.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text('Good morning, $name 👋', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+          Text('$greeting, $name 👋', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Text('$dueTodayCount tasks to tackle today', style: const TextStyle(color: Colors.white70, fontSize: 11)),
           const SizedBox(height: 16),
@@ -138,6 +140,17 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         ],
       ),
     );
+  }
+
+  String _greetingForNow() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good morning';
+    }
+    if (hour < 18) {
+      return 'Good afternoon';
+    }
+    return 'Good evening';
   }
 
   Widget _buildStatBubble(String value, String label, Color color) {

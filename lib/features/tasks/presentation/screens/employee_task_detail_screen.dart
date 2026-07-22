@@ -169,7 +169,7 @@ class _EmployeeTaskDetailScreenState extends State<EmployeeTaskDetailScreen> {
         FilledButton(
           onPressed: () {
             if (task.status != TaskStatus.completed) {
-              context.read<TaskBloc>().add(UpdateTask(task.copyWith(status: TaskStatus.completed)));
+              context.read<TaskBloc>().add(UpdateTaskRequested(task: task.copyWith(status: TaskStatus.completed)));
             }
           },
           child: Text(task.status == TaskStatus.completed ? 'Already Completed' : 'Mark Completed'),

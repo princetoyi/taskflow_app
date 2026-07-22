@@ -1,5 +1,5 @@
 import 'package:get_it/get_it.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../network/api_service.dart';
 import '../network/api_client.dart';
 import '../services/connectivity_service.dart';
@@ -18,16 +18,15 @@ import '../../features/settings/presentation/bloc/theme_bloc.dart';
 import '../../features/tasks/data/datasources/task_remote_data_source.dart';
 import '../../features/tasks/data/local/task_local_datasource.dart';
 import '../../features/tasks/data/models/task_hive_model.dart';
-import '../../features/tasks/data/repositories/mock_task_repository.dart';
 import '../../features/tasks/data/repositories/task_repository_impl.dart';
 import '../../features/tasks/domain/repositories/task_repository.dart';
+import '../../features/tasks/presentation/bloc/task_bloc.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
 import '../../features/notifications/data/repositories/notification_repository.dart';
 import '../../features/settings/data/datasources/theme_remote_data_source.dart';
 import '../../features/settings/data/repositories/theme_repository.dart';
 import '../../core/models/sync_queue_item.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 class InjectionContainer {
   static final GetIt locator = GetIt.instance;
@@ -137,26 +136,23 @@ class InjectionContainer {
       () => ThemeBloc(themeRepository: locator<ThemeRepository>()),
     );
 
-    // ============ Task Repository (Real or Mock) ============
-    final useReal = dotenv.env['USE_REAL_TASKS']?.toLowerCase() == 'true';
-
+    // ============ Task Repository ============
     locator.registerLazySingleton<TaskRepository>(
-      () {
-        if (useReal) {
-          return TaskRepositoryImpl(
-            remoteDataSource: locator<TaskRemoteDataSource>(),
-            connectivityService: locator<ConnectivityService>(),
-            localDataSource: locator<TaskLocalDataSource>(),
-            syncQueueDataSource: locator<SyncQueueDataSource>(),
-          );
-        }
-        return MockTaskRepository();
-      },
+      () => TaskRepositoryImpl(
+        remoteDataSource: locator<TaskRemoteDataSource>(),
+        connectivityService: locator<ConnectivityService>(),
+        localDataSource: locator<TaskLocalDataSource>(),
+        syncQueueDataSource: locator<SyncQueueDataSource>(),
+      ),
     );
 
     // ============ BLoCs (State Management) ============
     locator.registerLazySingleton<AuthBloc>(
       () => AuthBloc(locator<AuthRepository>()),
+    );
+
+    locator.registerLazySingleton<TaskBloc>(
+      () => TaskBloc(locator<TaskRepository>()),
     );
   }
 }

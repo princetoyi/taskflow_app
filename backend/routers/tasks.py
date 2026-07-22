@@ -1,180 +1,206 @@
 """
 routers/tasks.py
 ----------------
-Stub router for /tasks endpoints.
-Real implementation will read/write to Cloud Firestore via firebase-admin.
+Task management endpoints with Firestore integration.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from datetime import datetime, timezone
+from datetime import datetime
+from typing import Optional
 from core.security import verify_token
+from app.repositories import TaskRepository
+from app.models.task import TaskCreate, TaskUpdate, TaskResponse
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-
-from typing import Literal
-from fastapi import Query
-
-# ── Request / Response schemas ────────────────────────────────────────────────
-
-class TaskCreateRequest(BaseModel):
-    title: str
-    description: str = ""
-    priority: Literal["low", "medium", "high"] = "medium"
-    deadline: str | None = None
-
-
-class TaskUpdateRequest(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    completed: bool | None = None
-    priority: Literal["low", "medium", "high"] | None = None
-    deadline: str | None = None
-
-
-class TaskResponse(BaseModel):
-    id: str
-    title: str
-    description: str
-    completed: bool
-    created_at: str
-    owner_uid: str
-    priority: Literal["low", "medium", "high"]
-    deadline: str | None = None
-
-
-# ── Stub data ─────────────────────────────────────────────────────────────────
-
-STUB_TASKS = [
-    TaskResponse(
-        id="task-001",
-        title="Set up Firebase project",
-        description="Enable Auth and Firestore, export service account JSON.",
-        completed=True,
-        created_at="2026-05-01T08:00:00Z",
-        owner_uid="stub-uid-001",
-        priority="high",
-        deadline=None,
-    ),
-    TaskResponse(
-        id="task-002",
-        title="Build FastAPI backend scaffold",
-        description="Create routers, firebase init, and CORS middleware.",
-        completed=False,
-        created_at="2026-05-02T09:00:00Z",
-        owner_uid="stub-uid-001",
-        priority="medium",
-        deadline=None,
-    ),
-]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[TaskResponse], summary="Get all tasks for authenticated user")
 async def get_tasks(
-    status: str | None = Query(None, description="Filter: pending or completed"),
-    priority: str | None = Query(None, description="Filter: low, medium, high"),
-    sort_by: str = Query("created_at", description="Field to sort by"),
-    order: str = Query("asc", description="asc or desc"),
+    decoded_token: dict = Depends(verify_token),
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    order: str = Query("desc"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
-    decoded_token: dict = Depends(verify_token)
+    page_size: int = Query(20, ge=1, le=100),
 ):
     """
-    STUB — Returns filtered, sorted, and paginated task list.
+    Get all tasks for the authenticated user with optional filtering and sorting.
+    
+    Query Parameters:
+    - status: Filter by "completed" or "pending"
+    - priority: Filter by "low", "medium", or "high"
+    - sort_by: Sort by "created_at", "deadline", or "title"
+    - order: Sort order "asc" or "desc"
+    - page: Page number (1-indexed)
+    - page_size: Items per page
     """
-    uid = decoded_token.get("uid") or "stub-uid-001"
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     
-    # In a real implementation: filter by owner_uid
-    tasks = list(STUB_TASKS)
-    
-    # Apply optional filters
-    if status is not None:
-        if status == "completed":
-            tasks = [t for t in tasks if t.completed]
-        elif status == "pending":
-            tasks = [t for t in tasks if not t.completed]
-
-    if priority is not None:
-        tasks = [t for t in tasks if t.priority == priority]
-
-    # Apply sorting
-    reverse = (order.lower() == "desc")
-    def sort_key(task: TaskResponse):
-        val = getattr(task, sort_by, None)
-        return val if val is not None else ""
-
     try:
-        tasks.sort(key=sort_key, reverse=reverse)
-    except Exception:
-        tasks.sort(key=lambda t: t.created_at, reverse=reverse)
-
-    # Apply pagination
-    start = (page - 1) * page_size
-    end = start + page_size
-    tasks = tasks[start:end]
-
-    return tasks
+        tasks = TaskRepository.get_user_tasks(
+            owner_uid=uid,
+            status=status,
+            priority=priority,
+            sort_by=sort_by,
+            order=order,
+            page=page,
+            page_size=page_size,
+        )
+        
+        # Convert to response format
+        return [
+            TaskResponse(
+                id=task["id"],
+                owner_uid=task["owner_uid"],
+                title=task["title"],
+                description=task.get("description"),
+                completed=task.get("completed", False),
+                priority=task.get("priority", "medium"),
+                deadline=task.get("deadline"),
+                created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+            )
+            for task in tasks
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/", response_model=TaskResponse, status_code=201, summary="Create a new task")
-async def create_task(body: TaskCreateRequest, decoded_token: dict = Depends(verify_token)):
-    """
-    STUB — Returns a fake created task and appends to in-memory list.
-    """
-    uid = decoded_token.get("uid") or "stub-uid-001"
-    new_task = TaskResponse(
-        id=f"task-new-{len(STUB_TASKS) + 1}",
-        title=body.title,
-        description=body.description,
-        completed=False,
-        created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        owner_uid=uid,
-        priority=body.priority,
-        deadline=body.deadline
-    )
-    STUB_TASKS.append(new_task)
-    return new_task
+async def create_task(body: TaskCreate, decoded_token: dict = Depends(verify_token)):
+    """Create a new task for the authenticated user."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        task = TaskRepository.create_task(
+            owner_uid=uid,
+            title=body.title,
+            description=body.description,
+            priority=body.priority,
+            deadline=body.deadline.isoformat() if body.deadline else None,
+        )
+        
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{task_id}", response_model=TaskResponse, summary="Get a single task by ID")
 async def get_task(task_id: str, decoded_token: dict = Depends(verify_token)):
-    """STUB — Returns the task by ID."""
-    task = next((t for t in STUB_TASKS if t.id == task_id), None)
-    if not task:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-    return task
-
-
-@router.put("/{task_id}", response_model=TaskResponse, summary="Update a task")
-async def update_task(task_id: str, body: TaskUpdateRequest, decoded_token: dict = Depends(verify_token)):
-    """STUB — Returns the updated task with put fields applied."""
-    global STUB_TASKS
-    task_idx = next((i for i, t in enumerate(STUB_TASKS) if t.id == task_id), None)
-    if task_idx is None:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+    """Get a single task by ID."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     
-    task = STUB_TASKS[task_idx]
-    
-    # Exclude unset fields (partial updates supported)
-    updates = body.model_dump(exclude_unset=True)
-    updated_dict = task.model_dump()
-    for k, v in updates.items():
-        updated_dict[k] = v
+    try:
+        task = TaskRepository.get_task(task_id, uid)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
         
-    updated_task = TaskResponse(**updated_dict)
-    STUB_TASKS[task_idx] = updated_task
-    return updated_task
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{task_id}", response_model=TaskResponse, summary="Update a task")
+async def update_task(task_id: str, body: TaskUpdate, decoded_token: dict = Depends(verify_token)):
+    """Update a task."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        updates = {}
+        
+        if body.title is not None:
+            updates["title"] = body.title
+        if body.description is not None:
+            updates["description"] = body.description
+        if body.completed is not None:
+            updates["completed"] = body.completed
+        if body.priority is not None:
+            updates["priority"] = body.priority
+        if body.deadline is not None:
+            updates["deadline"] = body.deadline.isoformat()
+        
+        task = TaskRepository.update_task(task_id, uid, **updates)
+        
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+        
+        return TaskResponse(
+            id=task["id"],
+            owner_uid=task["owner_uid"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            deadline=task.get("deadline"),
+            created_at=task.get("created_at", datetime.utcnow().isoformat() + "Z"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{task_id}", status_code=204, summary="Delete a task")
 async def delete_task(task_id: str, decoded_token: dict = Depends(verify_token)):
-    """STUB — Delete a task from the in-memory list."""
-    global STUB_TASKS
-    task_idx = next((i for i, t in enumerate(STUB_TASKS) if t.id == task_id), None)
-    if task_idx is None:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-    STUB_TASKS.pop(task_idx)
-    return None
+    """Delete a task."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        success = TaskRepository.delete_task(task_id, uid)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{user_id}/statistics", summary="Get task statistics for a user")
+async def get_task_statistics(user_id: str, decoded_token: dict = Depends(verify_token)):
+    """Get task statistics (completed, pending, overdue, high priority count)."""
+    uid = decoded_token.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Only allow users to get their own stats
+    if uid != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    try:
+        stats = TaskRepository.get_task_statistics(uid)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
